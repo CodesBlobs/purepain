@@ -1,0 +1,14 @@
+# Dependencies
+backend/node_modules/
+
+# SQLite (legacy — replaced by Postgres)
+backend/*.db
+backend/*.db-wal
+backend/*.db-shm
+
+# macOS
+.DS_Store
+
+# Logs
+*.log
+npm-debug.log*
