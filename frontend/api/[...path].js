@@ -1,4 +1,4 @@
-export default async function handler(req, res) {
+module.exports = async function handler(req, res) {
   const pathParts = req.query.path || [];
   const qs = req.url.split('?')[1] || '';
   const target = `${process.env.BACKEND_URL}/api/${pathParts.join('/')}${qs ? '?' + qs : ''}`;
@@ -16,7 +16,7 @@ export default async function handler(req, res) {
     const response = await fetch(target, opts);
     const data = await response.json().catch(() => ({}));
     res.status(response.status).json(data);
-  } catch {
-    res.status(502).json({ error: 'Backend unreachable' });
+  } catch (err) {
+    res.status(502).json({ error: 'Backend unreachable', detail: err.message });
   }
-}
+};
