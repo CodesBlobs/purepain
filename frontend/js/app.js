@@ -141,6 +141,17 @@ function logout() {
 }
 
 // ── App Entry ──────────────────────────────────────────────────────────────
+function enterGuestChallenge() {
+  document.getElementById('auth-screen').style.display = 'none';
+  document.getElementById('app-screen').style.display = 'block';
+  document.querySelector('.app-layout').classList.add('challenge-mode');
+  history.replaceState({ page: 'practice-challenge' }, '', '/practice-challenge');
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById('page-practice-challenge').classList.add('active');
+  currentPage = 'practice-challenge';
+  loadPracticeChallenge();
+}
+
 function enterApp() {
   document.getElementById('auth-screen').style.display = 'none';
   document.getElementById('app-screen').style.display = 'block';
@@ -386,6 +397,49 @@ async function submitPracticeAnswer(chosen) {
 }
 
 // ── STUDENT: Challenge (5-question quiz mode) ──────────────────────────────
+function generateMathQuestion(difficulty) {
+  const ops = ['+', '-', '*'];
+  let a, b, op, answer;
+  if (difficulty === 'easy') {
+    a = Math.floor(Math.random() * 20) + 1;
+    b = Math.floor(Math.random() * 20) + 1;
+    op = ops[Math.floor(Math.random() * 2)];
+    if (op === '-' && b > a) [a, b] = [b, a];
+  } else if (difficulty === 'medium') {
+    a = Math.floor(Math.random() * 50) + 10;
+    b = Math.floor(Math.random() * 20) + 1;
+    op = ops[Math.floor(Math.random() * 3)];
+    if (op === '-' && b > a) [a, b] = [b, a];
+  } else {
+    a = Math.floor(Math.random() * 100) + 20;
+    b = Math.floor(Math.random() * 50) + 10;
+    op = ops[Math.floor(Math.random() * 3)];
+    if (op === '-' && b > a) [a, b] = [b, a];
+  }
+  if (op === '+') answer = a + b;
+  else if (op === '-') answer = a - b;
+  else answer = a * b;
+  const correctStr = answer.toString();
+  const wrongs = new Set();
+  while (wrongs.size < 3) {
+    const offset = Math.floor(Math.random() * 10) + 1;
+    const wrong = answer + (Math.random() > 0.5 ? offset : -offset);
+    if (wrong !== answer) wrongs.add(wrong.toString());
+  }
+  const allOptions = [correctStr, ...wrongs];
+  for (let i = allOptions.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [allOptions[i], allOptions[j]] = [allOptions[j], allOptions[i]];
+  }
+  const labels = ['A', 'B', 'C', 'D'];
+  return {
+    difficulty,
+    question_text: `What is ${a} ${op} ${b}?`,
+    answer: correctStr,
+    options: allOptions.map((val, i) => ({ option_label: labels[i], option_text: val })),
+  };
+}
+
 function loadPracticeChallenge() {
   challengeState.current = 0;
   challengeState.score = 0;
@@ -429,11 +483,17 @@ async function startChallenge() {
   document.getElementById('challenge-content').innerHTML =
     '<div style="text-align:center;padding:80px;color:var(--gray-400)">Loading questions…</div>';
   try {
-    challengeState.questions = await Promise.all(
-      Array.from({ length: challengeState.total }, () =>
-        api(`/api/student/practice?difficulty=${challengeState.difficulty}`)
-      )
-    );
+    if (token) {
+      challengeState.questions = await Promise.all(
+        Array.from({ length: challengeState.total }, () =>
+          api(`/api/student/practice?difficulty=${challengeState.difficulty}`)
+        )
+      );
+    } else {
+      challengeState.questions = Array.from({ length: challengeState.total }, () =>
+        generateMathQuestion(challengeState.difficulty)
+      );
+    }
     challengeState.selectedAnswers = new Array(challengeState.total).fill(null);
     challengeState.current = 0;
     renderChallengeQuestion();
@@ -516,21 +576,23 @@ function submitChallenge() {
   });
   challengeState.score = challengeState.results.filter(r => r.is_correct).length;
 
-  challengeState.questions.forEach((q, i) => {
-    const chosen = challengeState.selectedAnswers[i];
-    if (chosen) {
-      api('/api/student/submit', {
-        method: 'POST',
-        body: JSON.stringify({
-          is_generated: true,
-          question_text: q.question_text,
-          answer: q.answer,
-          answer_given: chosen,
-          difficulty: challengeState.difficulty,
-        })
-      }).catch(() => {});
-    }
-  });
+  if (token) {
+    challengeState.questions.forEach((q, i) => {
+      const chosen = challengeState.selectedAnswers[i];
+      if (chosen) {
+        api('/api/student/submit', {
+          method: 'POST',
+          body: JSON.stringify({
+            is_generated: true,
+            question_text: q.question_text,
+            answer: q.answer,
+            answer_given: chosen,
+            difficulty: challengeState.difficulty,
+          })
+        }).catch(() => {});
+      }
+    });
+  }
 
   challengeState.completed = true;
   navigateTo('practice-complete');
@@ -570,9 +632,14 @@ function renderChallengeComplete() {
           `).join('')}
         </div>
 
+        ${!currentUser ? `
+        <div style="background:var(--primary-light,#eff6ff);border-radius:12px;padding:16px 24px;margin-top:24px;text-align:center">
+          <p style="margin:0 0 12px;font-weight:600">Sign up to save your progress and track streaks!</p>
+          <button class="btn btn-primary" style="width:auto" onclick="document.getElementById('auth-screen').style.display='';document.getElementById('app-screen').style.display='none'">Create Account</button>
+        </div>` : ''}
         <div style="display:flex;gap:12px;justify-content:center;margin-top:32px;flex-wrap:wrap">
           <button class="btn btn-outline" onclick="restartChallenge()">Try Again</button>
-          <button class="btn btn-primary" style="width:auto" onclick="navigateTo('student-home')">Back to Home</button>
+          ${currentUser ? `<button class="btn btn-primary" style="width:auto" onclick="navigateTo('student-home')">Back to Home</button>` : ''}
         </div>
       </div>
     </div>
@@ -1067,7 +1134,10 @@ window.addEventListener('popstate', e => {
 
 // ── Boot ───────────────────────────────────────────────────────────────────
 (async function init() {
-  if (!token) return;
+  if (!token) {
+    if (window.location.pathname.slice(1) === 'practice-challenge') enterGuestChallenge();
+    return;
+  }
   try {
     const payload = JSON.parse(atob(token.split('.')[1]));
     if (payload.exp * 1000 < Date.now()) throw new Error('expired');
