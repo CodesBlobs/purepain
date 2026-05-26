@@ -29,9 +29,9 @@ let assigningQuestionId = null;
 async function api(path, opts = {}) {
   const headers = { 'Content-Type': 'application/json' };
   if (token) headers['Authorization'] = `Bearer ${token}`;
-  const url = (location.hostname === 'localhost'
-    ? 'http://localhost:3001'
-    : 'http://34.151.69.181:3000') + path.replace(/^\/api/, '');
+  const url = location.hostname === 'localhost'
+    ? 'http://localhost:3001' + path.replace(/^\/api/, '')
+    : path;
   const res = await fetch(url, { ...opts, headers });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
