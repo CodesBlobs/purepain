@@ -1,7 +1,7 @@
 module.exports = async function handler(req, res) {
   const pathParts = req.query.path || [];
   const qs = req.url.split('?')[1] || '';
-  const target = `${process.env.BACKEND_URL}/api/${pathParts.join('/')}${qs ? '?' + qs : ''}`;
+  const target = `${process.env.BACKEND_URL}/${pathParts.join('/')}${qs ? '?' + qs : ''}`;
 
   const headers = {};
   if (req.headers['content-type'])  headers['content-type']  = req.headers['content-type'];

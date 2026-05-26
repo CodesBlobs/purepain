@@ -1,5 +1,5 @@
 // ── State ──────────────────────────────────────────────────────────────────
-const API = location.hostname === 'localhost' ? 'http://localhost:3001' : '';
+
 let currentUser = null;
 let token = localStorage.getItem('token');
 let currentPage = null;
@@ -29,7 +29,10 @@ let assigningQuestionId = null;
 async function api(path, opts = {}) {
   const headers = { 'Content-Type': 'application/json' };
   if (token) headers['Authorization'] = `Bearer ${token}`;
-  const res = await fetch(API + path, { ...opts, headers });
+  const url = location.hostname === 'localhost'
+    ? 'http://localhost:3001' + path.replace(/^\/api/, '')
+    : path;
+  const res = await fetch(url, { ...opts, headers });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
   return data;
