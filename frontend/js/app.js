@@ -1,5 +1,5 @@
 // ── State ──────────────────────────────────────────────────────────────────
-const API = '';
+const API = location.hostname === 'localhost' ? 'http://localhost:3001' : '';
 let currentUser = null;
 let token = localStorage.getItem('token');
 let currentPage = null;
