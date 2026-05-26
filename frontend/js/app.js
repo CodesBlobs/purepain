@@ -199,7 +199,7 @@ function buildNav() {
 
 function navigateTo(page, pushHistory = true) {
   // Completion page is only accessible after finishing the challenge
-  if (page === 'practice-complete') {
+  if (page === 'practice-complete' || page === 'completed-full-correct') {
     if (!challengeState.completed) {
       navigateTo('practice-challenge');
       return;
@@ -212,7 +212,8 @@ function navigateTo(page, pushHistory = true) {
     history.pushState({ page }, '', urlPath);
   }
 
-  document.querySelector('.app-layout').classList.toggle('challenge-mode', page === 'practice-challenge');
+  document.querySelector('.app-layout').classList.toggle('challenge-mode',
+    page === 'practice-challenge' || page === 'practice-complete' || page === 'completed-full-correct');
 
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
@@ -228,7 +229,8 @@ function navigateTo(page, pushHistory = true) {
   if (page === 'student-home')       loadStudentHome();
   if (page === 'practice')           loadPractice();
   if (page === 'practice-challenge') loadPracticeChallenge();
-  if (page === 'practice-complete')  renderChallengeComplete();
+  if (page === 'practice-complete')        renderChallengeComplete();
+  if (page === 'completed-full-correct')   renderFullCorrect();
   if (page === 'assignments')        loadAssignments();
   if (page === 'parent-home')        loadParentHome();
   if (page === 'my-questions')       loadMyQuestions();
@@ -595,7 +597,7 @@ function submitChallenge() {
   }
 
   challengeState.completed = true;
-  navigateTo('practice-complete');
+  navigateTo(challengeState.score === challengeState.total ? 'completed-full-correct' : 'practice-complete');
 }
 
 function renderChallengeComplete() {
@@ -639,6 +641,45 @@ function renderChallengeComplete() {
         </div>` : ''}
         <div style="display:flex;gap:12px;justify-content:center;margin-top:32px;flex-wrap:wrap">
           <button class="btn btn-outline" onclick="restartChallenge()">Try Again</button>
+          ${currentUser ? `<button class="btn btn-primary" style="width:auto" onclick="navigateTo('student-home')">Back to Home</button>` : ''}
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function renderFullCorrect() {
+  const { total, difficulty } = challengeState;
+  document.getElementById('full-correct-content').innerHTML = `
+    <div class="complete-screen">
+      <div class="complete-card" style="border-top:4px solid var(--success)">
+        <div class="complete-badge" style="background:var(--success);color:#fff">🌟 Perfect Score</div>
+        <div class="complete-icon" style="font-size:72px">🏆</div>
+        <h2 style="color:var(--success)">Flawless!</h2>
+        <p class="complete-subtitle">${total}/${total} correct on ${difficulty.charAt(0).toUpperCase() + difficulty.slice(1)}</p>
+        <div class="score-display" style="color:var(--success)">100%</div>
+        <div class="stars" style="font-size:28px">⭐⭐⭐⭐⭐</div>
+        <p style="color:var(--gray-500);margin:16px 0 24px">You got every single question right. Incredible work!</p>
+
+        <div class="result-breakdown">
+          ${challengeState.results.map((r, i) => `
+            <div class="result-row correct">
+              <span class="result-num">Q${i + 1}</span>
+              <span class="result-icon">✅</span>
+              <span class="result-q">${r.question_text}</span>
+              <span class="result-ans">${r.answer_given}</span>
+            </div>
+          `).join('')}
+        </div>
+
+        ${!currentUser ? `
+        <div style="background:#f0fdf4;border-radius:12px;padding:16px 24px;margin-top:24px;text-align:center">
+          <p style="margin:0 0 12px;font-weight:600">Sign up to save your streak and compete on the leaderboard!</p>
+          <button class="btn btn-primary" style="width:auto" onclick="document.getElementById('auth-screen').style.display='';document.getElementById('app-screen').style.display='none'">Create Account</button>
+        </div>` : ''}
+
+        <div style="display:flex;gap:12px;justify-content:center;margin-top:32px;flex-wrap:wrap">
+          <button class="btn btn-outline" onclick="restartChallenge()">Go Again</button>
           ${currentUser ? `<button class="btn btn-primary" style="width:auto" onclick="navigateTo('student-home')">Back to Home</button>` : ''}
         </div>
       </div>
