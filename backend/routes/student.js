@@ -98,10 +98,31 @@ router.get('/dashboard', async (req, res) => {
   }
 });
 
-router.get('/practice', (req, res) => {
+router.get('/practice', async (req, res) => {
   const difficulty = ['easy', 'medium', 'hard'].includes(req.query.difficulty)
     ? req.query.difficulty
     : 'easy';
+
+  try {
+    const pending = await db.get(`
+      SELECT a.id as assignment_id, q.id as question_id, q.question_text, q.type, q.difficulty, q.answer
+      FROM assignments a
+      JOIN questions q ON q.id = a.question_id
+      WHERE a.student_id = $1 AND a.status = 'pending'
+      ORDER BY a.assigned_at ASC
+      LIMIT 1
+    `, [req.user.id]);
+
+    if (pending) {
+      const options = await db.all('SELECT * FROM question_options WHERE question_id = $1', [pending.question_id]);
+      return res.json({
+        ...pending,
+        from_assignment: true,
+        options: options.map(o => ({ option_label: o.option_label, option_text: o.option_text, is_correct: o.is_correct }))
+      });
+    }
+  } catch (_) {}
+
   res.json(generateMathQuestion(difficulty));
 });
 
@@ -140,7 +161,7 @@ router.post('/submit', async (req, res) => {
       [req.user.id, question_id, assignment_id || null, answer_given, is_correct]
     );
 
-    if (assignment_id && is_correct) {
+    if (assignment_id) {
       await db.run(
         "UPDATE assignments SET status = 'completed' WHERE id = $1 AND student_id = $2",
         [assignment_id, req.user.id]

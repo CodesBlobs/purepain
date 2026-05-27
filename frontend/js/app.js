@@ -338,41 +338,56 @@ async function loadNextQuestion() {
 function renderPracticeQuestion() {
   const q = practiceState.question;
   const container = document.getElementById('practice-content');
+  const isAssigned = !!q.from_assignment;
+  const hasOptions = Array.isArray(q.options) && q.options.length > 0;
 
   container.innerHTML = `
     <div class="question-card">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
-        <div class="q-number">Generated Question</div>
+        <div class="q-number">${isAssigned ? '<span style="color:var(--primary);font-weight:600">📚 Assigned by parent</span>' : 'Generated Question'}</div>
         <div class="streak-display">🔥 ${practiceState.streak} streak</div>
       </div>
       <div class="q-content">${q.question_text}</div>
-      <div class="options-grid" id="practice-options">
-        ${q.options.map(o => `
-          <button class="option-btn" data-value="${o.option_text}" onclick="submitPracticeAnswer(this.dataset.value)" id="opt-${o.option_label}">
-            <span class="opt-label">${o.option_label}</span>
-            ${o.option_text}
-          </button>
-        `).join('')}
-      </div>
+      ${hasOptions ? `
+        <div class="options-grid" id="practice-options">
+          ${q.options.map(o => `
+            <button class="option-btn" data-value="${o.option_text}" onclick="submitPracticeAnswer(this.dataset.value)" id="opt-${o.option_label}">
+              <span class="opt-label">${o.option_label}</span>
+              ${o.option_text}
+            </button>
+          `).join('')}
+        </div>
+      ` : `
+        <div style="margin-top:16px;display:flex;gap:8px">
+          <input type="text" id="practice-text-answer" class="form-control" placeholder="Type your answer…" onkeydown="if(event.key==='Enter')submitPracticeAnswer(document.getElementById('practice-text-answer').value.trim())" style="flex:1">
+          <button class="btn btn-primary" style="width:auto" onclick="submitPracticeAnswer(document.getElementById('practice-text-answer').value.trim())">Submit</button>
+        </div>
+      `}
       <div id="practice-result" style="display:none"></div>
     </div>
   `;
+  if (!hasOptions) setTimeout(() => document.getElementById('practice-text-answer')?.focus(), 50);
 }
 
 async function submitPracticeAnswer(chosen) {
-  if (practiceState.answered) return;
+  if (practiceState.answered || !chosen) return;
   practiceState.answered = true;
 
   const q = practiceState.question;
-  const isCorrect = chosen === q.answer;
+  const isCorrect = chosen.trim().toLowerCase() === q.answer.trim().toLowerCase();
 
-  q.options.forEach(o => {
-    const btn = document.getElementById('opt-' + o.option_label);
-    if (!btn) return;
-    btn.disabled = true;
-    if (o.option_text === q.answer) btn.classList.add('correct');
-    else if (o.option_text === chosen) btn.classList.add('wrong');
-  });
+  if (Array.isArray(q.options) && q.options.length > 0) {
+    q.options.forEach(o => {
+      const btn = document.getElementById('opt-' + o.option_label);
+      if (!btn) return;
+      btn.disabled = true;
+      if (o.option_text === q.answer) btn.classList.add('correct');
+      else if (o.option_text === chosen) btn.classList.add('wrong');
+    });
+  } else {
+    const inp = document.getElementById('practice-text-answer');
+    if (inp) inp.disabled = true;
+  }
 
   const resultEl = document.getElementById('practice-result');
   resultEl.style.display = 'block';
@@ -386,16 +401,27 @@ async function submitPracticeAnswer(chosen) {
   if (isCorrect) practiceState.streak++;
   else practiceState.streak = 0;
 
-  api('/api/student/submit', {
-    method: 'POST',
-    body: JSON.stringify({
-      is_generated: true,
-      question_text: q.question_text,
-      answer: q.answer,
-      answer_given: chosen,
-      difficulty: q.difficulty,
-    })
-  }).catch(() => {});
+  if (q.from_assignment) {
+    api('/api/student/submit', {
+      method: 'POST',
+      body: JSON.stringify({
+        question_id: q.question_id,
+        assignment_id: q.assignment_id,
+        answer_given: chosen,
+      })
+    }).catch(() => {});
+  } else {
+    api('/api/student/submit', {
+      method: 'POST',
+      body: JSON.stringify({
+        is_generated: true,
+        question_text: q.question_text,
+        answer: q.answer,
+        answer_given: chosen,
+        difficulty: q.difficulty,
+      })
+    }).catch(() => {});
+  }
 }
 
 // ── STUDENT: Challenge (5-question quiz mode) ──────────────────────────────
@@ -985,6 +1011,43 @@ async function deleteQuestion(id) {
   } catch (err) {}
 }
 
+function openGenerateQuestions() {
+  document.getElementById('modal-generate-questions').style.display = 'flex';
+  hideAlert('generate-error');
+  hideAlert('generate-success');
+  document.getElementById('gen-submit-btn').disabled = false;
+  document.getElementById('gen-submit-btn').textContent = 'Generate Questions';
+}
+
+async function submitGenerateQuestions() {
+  hideAlert('generate-error');
+  hideAlert('generate-success');
+  const count = parseInt(document.getElementById('gen-count').value);
+  const difficulty = document.getElementById('gen-difficulty').value;
+  const topic = document.getElementById('gen-topic').value;
+
+  const btn = document.getElementById('gen-submit-btn');
+  btn.disabled = true;
+  btn.textContent = `Generating ${count} questions…`;
+
+  try {
+    const result = await api('/api/parent/questions/generate', {
+      method: 'POST',
+      body: JSON.stringify({ count, difficulty, topic })
+    });
+    if (!parentData.my_questions) parentData.my_questions = [];
+    parentData.my_questions.unshift(...result.questions);
+    renderQuestionsList();
+    showAlert('generate-success', `✅ ${result.generated} questions generated and added to your bank!`);
+    btn.textContent = 'Generate More';
+    btn.disabled = false;
+  } catch (err) {
+    showAlert('generate-error', err.message);
+    btn.disabled = false;
+    btn.textContent = 'Generate Questions';
+  }
+}
+
 // ── PARENT: Assign ─────────────────────────────────────────────────────────
 async function loadAssignPage() {
   try {
@@ -1004,27 +1067,84 @@ async function loadAssignPage() {
     }
 
     container.innerHTML = `
-      <div class="form-group" style="max-width:300px">
-        <label>Assign to student</label>
-        <select id="bulk-assign-student">
-          ${data.students.map(s => `<option value="${s.id}">${s.name}</option>`).join('')}
-        </select>
+      <div style="display:flex;align-items:flex-end;gap:16px;flex-wrap:wrap;margin-bottom:16px">
+        <div class="form-group" style="margin:0;min-width:200px">
+          <label>Assign to student</label>
+          <select id="bulk-assign-student">
+            ${data.students.map(s => `<option value="${s.id}">${s.name}</option>`).join('')}
+          </select>
+        </div>
+        <div style="padding-bottom:2px">
+          <span id="assign-selection-count" style="color:var(--gray-500);font-size:14px">0 / 5 selected</span>
+        </div>
+        <button id="assign-set-btn" class="btn btn-primary" style="width:auto;opacity:0.4;cursor:not-allowed" disabled onclick="submitAssignSet()">Assign Practice Set</button>
+        <div id="assign-set-success" class="alert alert-success" style="display:none;margin:0"></div>
       </div>
-      <div class="questions-list">
+      <div class="questions-list" id="assign-questions-list">
         ${data.my_questions.map(q => `
-          <div class="question-item">
+          <div class="question-item" id="assign-row-${q.id}" onclick="toggleAssignCheck(${q.id})" style="cursor:pointer">
+            <input type="checkbox" id="assign-check-${q.id}" style="margin-right:10px;width:16px;height:16px;cursor:pointer" onclick="event.stopPropagation();toggleAssignCheck(${q.id})">
             <span class="q-badge ${q.type}">${q.type.replace('_', ' ')}</span>
             <div style="flex:1">
               <div class="q-text">${q.question_text}</div>
               <div class="q-meta"><span class="diff-badge ${q.difficulty}">${q.difficulty}</span></div>
             </div>
-            <button class="btn btn-success btn-sm" onclick="quickAssign(${q.id})">Assign →</button>
           </div>
         `).join('')}
       </div>
     `;
   } catch (err) {
     document.getElementById('assign-content').innerHTML = `<div class="alert alert-error">${err.message}</div>`;
+  }
+}
+
+function toggleAssignCheck(id) {
+  const cb = document.getElementById('assign-check-' + id);
+  const checked = document.querySelectorAll('#assign-questions-list input[type=checkbox]:checked');
+  if (!cb.checked && checked.length >= 5) return;
+  cb.checked = !cb.checked;
+  updateAssignSetButton();
+}
+
+function updateAssignSetButton() {
+  const checked = document.querySelectorAll('#assign-questions-list input[type=checkbox]:checked');
+  const btn = document.getElementById('assign-set-btn');
+  const counter = document.getElementById('assign-selection-count');
+  if (counter) counter.textContent = `${checked.length} / 5 selected`;
+  if (btn) {
+    const disabled = checked.length === 0;
+    btn.disabled = disabled;
+    btn.style.opacity = disabled ? '0.4' : '1';
+    btn.style.cursor = disabled ? 'not-allowed' : 'pointer';
+  }
+}
+
+async function submitAssignSet() {
+  const checked = [...document.querySelectorAll('#assign-questions-list input[type=checkbox]:checked')];
+  if (!checked.length) return;
+  const question_ids = checked.map(cb => parseInt(cb.id.replace('assign-check-', '')));
+  const student_id = parseInt(document.getElementById('bulk-assign-student').value);
+
+  const btn = document.getElementById('assign-set-btn');
+  btn.disabled = true;
+  btn.textContent = 'Assigning…';
+
+  try {
+    const result = await api('/api/parent/assign-batch', {
+      method: 'POST',
+      body: JSON.stringify({ student_id, question_ids })
+    });
+    checked.forEach(cb => { cb.checked = false; });
+    updateAssignSetButton();
+    btn.textContent = 'Assign Practice Set';
+    const successEl = document.getElementById('assign-set-success');
+    successEl.textContent = `✅ ${result.assigned} question(s) added to their practice queue!`;
+    successEl.style.display = 'block';
+    setTimeout(() => { successEl.style.display = 'none'; }, 4000);
+  } catch (err) {
+    btn.disabled = false;
+    btn.textContent = 'Assign Practice Set';
+    alert(err.message);
   }
 }
 

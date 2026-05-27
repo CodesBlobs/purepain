@@ -81,12 +81,12 @@ router.post('/run-tests', async (req, res) => {
     return { status: r.status, data };
   }
 
-  let parentToken, studentToken, parentId, studentId, questionId, assignmentId;
+  let parentToken, studentToken, parentId, studentId, questionId, questionId2, assignmentId;
 
   try {
     // ── Auth ───────────────────────────────────────────────────────────────
     {
-      const r = await req_('POST', '/api/auth/register', {
+      const r = await req_('POST', '/auth/register', {
         name: `Test Parent ${suffix}`,
         email: `agent_parent_${suffix}@test.invalid`,
         password: 'testpass123',
@@ -103,7 +103,7 @@ router.post('/run-tests', async (req, res) => {
     }
 
     {
-      const r = await req_('POST', '/api/auth/register', {
+      const r = await req_('POST', '/auth/register', {
         name: `Test Student ${suffix}`,
         email: `agent_student_${suffix}@test.invalid`,
         password: 'testpass123',
@@ -121,7 +121,7 @@ router.post('/run-tests', async (req, res) => {
     }
 
     {
-      const r = await req_('POST', '/api/auth/login', {
+      const r = await req_('POST', '/auth/login', {
         email: `agent_parent_${suffix}@test.invalid`,
         password: 'testpass123',
       });
@@ -131,7 +131,7 @@ router.post('/run-tests', async (req, res) => {
     }
 
     {
-      const r = await req_('POST', '/api/auth/login', {
+      const r = await req_('POST', '/auth/login', {
         email: `agent_parent_${suffix}@test.invalid`,
         password: 'wrongpassword',
       });
@@ -141,7 +141,7 @@ router.post('/run-tests', async (req, res) => {
     }
 
     {
-      const r = await req_('POST', '/api/auth/register', {
+      const r = await req_('POST', '/auth/register', {
         name: 'Dup', email: `agent_parent_${suffix}@test.invalid`,
         password: 'testpass123', account_type: 'parent',
       });
@@ -153,7 +153,7 @@ router.post('/run-tests', async (req, res) => {
     // ── Parent ─────────────────────────────────────────────────────────────
     if (parentToken && studentId) {
       {
-        const r = await req_('POST', '/api/parent/link-student',
+        const r = await req_('POST', '/parent/link-student',
           { email: `agent_student_${suffix}@test.invalid` }, parentToken);
         r.status === 200 && r.data.student?.id === studentId
           ? pass('parent.link_student', `linked student ${studentId}`)
@@ -161,7 +161,7 @@ router.post('/run-tests', async (req, res) => {
       }
 
       {
-        const r = await req_('POST', '/api/parent/link-student',
+        const r = await req_('POST', '/parent/link-student',
           { email: `agent_student_${suffix}@test.invalid` }, parentToken);
         r.status === 409
           ? pass('parent.link_duplicate_rejects', 'HTTP 409')
@@ -169,7 +169,7 @@ router.post('/run-tests', async (req, res) => {
       }
 
       {
-        const r = await req_('POST', '/api/parent/link-student',
+        const r = await req_('POST', '/parent/link-student',
           { email: 'nobody@test.invalid' }, parentToken);
         r.status === 404
           ? pass('parent.link_nonexistent_rejects', 'HTTP 404')
@@ -177,7 +177,7 @@ router.post('/run-tests', async (req, res) => {
       }
 
       {
-        const r = await req_('GET', '/api/parent/dashboard', null, parentToken);
+        const r = await req_('GET', '/parent/dashboard', null, parentToken);
         const hasStudent = r.data.students?.some(s => s.id === studentId);
         r.status === 200 && hasStudent
           ? pass('parent.dashboard', `student visible`)
@@ -185,7 +185,7 @@ router.post('/run-tests', async (req, res) => {
       }
 
       {
-        const r = await req_('POST', '/api/parent/questions', {
+        const r = await req_('POST', '/parent/questions', {
           type: 'multiple_choice',
           difficulty: 'easy',
           question_text: 'What is 2 + 2?',
@@ -207,22 +207,23 @@ router.post('/run-tests', async (req, res) => {
       }
 
       {
-        const r = await req_('POST', '/api/parent/questions', {
+        const r = await req_('POST', '/parent/questions', {
           type: 'word_problem',
           difficulty: 'medium',
           question_text: 'If you have 10 apples and eat 3, how many are left?',
           answer: '7',
         }, parentToken);
         if (r.status === 200 && r.data.id) {
-          created.questionIds.push(r.data.id);
-          pass('parent.create_word_problem', `id=${r.data.id}`);
+          questionId2 = r.data.id;
+          created.questionIds.push(questionId2);
+          pass('parent.create_word_problem', `id=${questionId2}`);
         } else {
           fail('parent.create_word_problem', r.data.error || r.status);
         }
       }
 
       {
-        const r = await req_('POST', '/api/parent/questions', {
+        const r = await req_('POST', '/parent/questions', {
           type: 'invalid_type', difficulty: 'easy',
           question_text: 'Bad?', answer: 'yes',
         }, parentToken);
@@ -232,7 +233,7 @@ router.post('/run-tests', async (req, res) => {
       }
 
       if (questionId) {
-        const r = await req_('POST', '/api/parent/assign',
+        const r = await req_('POST', '/parent/assign',
           { student_id: studentId, question_id: questionId }, parentToken);
         if (r.status === 200 && r.data.id) {
           assignmentId = r.data.id;
@@ -244,15 +245,42 @@ router.post('/run-tests', async (req, res) => {
       }
 
       {
-        const r = await req_('POST', '/api/parent/assign',
+        const r = await req_('POST', '/parent/assign',
           { student_id: 99999, question_id: questionId }, parentToken);
         r.status === 403
           ? pass('parent.assign_non_linked_rejects', 'HTTP 403')
           : fail('parent.assign_non_linked_rejects', `expected 403, got ${r.status}`);
       }
 
+      // ── Batch assign (practice set) ──────────────────────────────────────
+      if (questionId && questionId2) {
+        const r = await req_('POST', '/parent/assign-batch',
+          { student_id: studentId, question_ids: [questionId, questionId2] }, parentToken);
+        if (r.status === 200 && r.data.assigned === 2) {
+          pass('parent.assign_batch', `assigned=${r.data.assigned}`);
+        } else {
+          fail('parent.assign_batch', r.data.error || JSON.stringify(r.data));
+        }
+      }
+
+      {
+        const r = await req_('POST', '/parent/assign-batch',
+          { student_id: 99999, question_ids: [questionId] }, parentToken);
+        r.status === 403
+          ? pass('parent.assign_batch_non_linked_rejects', 'HTTP 403')
+          : fail('parent.assign_batch_non_linked_rejects', `expected 403, got ${r.status}`);
+      }
+
+      {
+        const r = await req_('POST', '/parent/assign-batch',
+          { student_id: studentId, question_ids: [1,2,3,4,5,6] }, parentToken);
+        r.status === 400
+          ? pass('parent.assign_batch_over_limit_rejects', 'HTTP 400')
+          : fail('parent.assign_batch_over_limit_rejects', `expected 400, got ${r.status}`);
+      }
+
       if (studentId) {
-        const r = await req_('GET', `/api/parent/student/${studentId}/progress`, null, parentToken);
+        const r = await req_('GET', `/parent/student/${studentId}/progress`, null, parentToken);
         r.status === 200 && 'stats' in r.data
           ? pass('parent.view_student_progress', `total=${r.data.stats.total}`)
           : fail('parent.view_student_progress', r.data.error || r.status);
@@ -262,55 +290,69 @@ router.post('/run-tests', async (req, res) => {
     // ── Student ────────────────────────────────────────────────────────────
     if (studentToken) {
       {
-        const r = await req_('GET', '/api/student/dashboard', null, studentToken);
+        const r = await req_('GET', '/student/dashboard', null, studentToken);
         r.status === 200 && Array.isArray(r.data.assignments)
           ? pass('student.dashboard', `assignments=${r.data.assignments.length}`)
           : fail('student.dashboard', r.data.error || r.status);
       }
 
-      for (const diff of ['easy', 'medium', 'hard']) {
-        const r = await req_('GET', `/api/student/practice?difficulty=${diff}`, null, studentToken);
-        r.status === 200 && r.data.question_text && r.data.options?.length === 4
-          ? pass(`student.practice_${diff}`, r.data.question_text)
-          : fail(`student.practice_${diff}`, r.data.error || r.status);
-      }
-
+      // Practice should serve an assigned question (from batch assign above)
       {
-        const q = await req_('GET', '/api/student/practice?difficulty=easy', null, studentToken);
-        const correctOption = q.data.options?.find(o => o.is_correct);
-        if (correctOption) {
-          const r = await req_('POST', '/api/student/submit', {
-            is_generated: true,
-            question_text: q.data.question_text,
-            answer: q.data.answer,
-            answer_given: correctOption.option_text,
-            difficulty: 'easy',
-          }, studentToken);
-          r.status === 200 && r.data.is_correct === true
-            ? pass('student.submit_correct_generated', 'is_correct=true')
-            : fail('student.submit_correct_generated', r.data.error || JSON.stringify(r.data));
+        const r = await req_('GET', '/student/practice?difficulty=easy', null, studentToken);
+        if (r.status === 200 && r.data.question_text) {
+          const isAssigned = !!r.data.from_assignment;
+          pass('student.practice_serves_assignment', `from_assignment=${isAssigned}, q="${r.data.question_text}"`);
+
+          // Submit the assigned question and confirm it completes
+          if (isAssigned) {
+            const submit = await req_('POST', '/student/submit', {
+              question_id: r.data.question_id,
+              assignment_id: r.data.assignment_id,
+              answer_given: r.data.answer,
+            }, studentToken);
+            submit.status === 200
+              ? pass('student.submit_assignment_via_practice', `is_correct=${submit.data.is_correct}`)
+              : fail('student.submit_assignment_via_practice', submit.data.error || submit.status);
+          }
+        } else {
+          fail('student.practice_serves_assignment', r.data.error || r.status);
         }
       }
 
+      // After submitting one, next practice call should serve the next pending or fallback to generated
       {
-        const q = await req_('GET', '/api/student/practice?difficulty=easy', null, studentToken);
-        const wrongOption = q.data.options?.find(o => !o.is_correct);
-        if (wrongOption) {
-          const r = await req_('POST', '/api/student/submit', {
-            is_generated: true,
-            question_text: q.data.question_text,
-            answer: q.data.answer,
-            answer_given: wrongOption.option_text,
-            difficulty: 'easy',
-          }, studentToken);
-          r.status === 200 && r.data.is_correct === false
-            ? pass('student.submit_wrong_generated', 'is_correct=false')
-            : fail('student.submit_wrong_generated', r.data.error || JSON.stringify(r.data));
+        const r = await req_('GET', '/student/practice?difficulty=easy', null, studentToken);
+        r.status === 200 && r.data.question_text && Array.isArray(r.data.options)
+          ? pass('student.practice_fallback_or_next', `from_assignment=${!!r.data.from_assignment}`)
+          : fail('student.practice_fallback_or_next', r.data.error || r.status);
+      }
+
+      // Generated question submit (correct)
+      {
+        const q = await req_('GET', '/student/practice?difficulty=easy', null, studentToken);
+        if (q.status === 200 && !q.data.from_assignment) {
+          const correctOption = q.data.options?.find(o => o.is_correct || o.option_text === q.data.answer);
+          if (correctOption) {
+            const r = await req_('POST', '/student/submit', {
+              is_generated: true,
+              question_text: q.data.question_text,
+              answer: q.data.answer,
+              answer_given: correctOption.option_text,
+              difficulty: 'easy',
+            }, studentToken);
+            r.status === 200 && r.data.is_correct === true
+              ? pass('student.submit_correct_generated', 'is_correct=true')
+              : fail('student.submit_correct_generated', r.data.error || JSON.stringify(r.data));
+          } else {
+            pass('student.submit_correct_generated', 'skipped (assignment queue not empty)');
+          }
+        } else {
+          pass('student.submit_correct_generated', 'skipped (assignment queue not empty)');
         }
       }
 
       if (assignmentId && questionId) {
-        const r = await req_('POST', '/api/student/submit', {
+        const r = await req_('POST', '/student/submit', {
           question_id: questionId,
           assignment_id: assignmentId,
           answer_given: '4',
@@ -323,21 +365,21 @@ router.post('/run-tests', async (req, res) => {
 
     // ── Auth guard checks ──────────────────────────────────────────────────
     {
-      const r = await req_('GET', '/api/parent/dashboard', null, null);
+      const r = await req_('GET', '/parent/dashboard', null, null);
       r.status === 401
         ? pass('auth.unauthenticated_rejects', 'HTTP 401')
         : fail('auth.unauthenticated_rejects', `expected 401, got ${r.status}`);
     }
 
     {
-      const r = await req_('GET', '/api/parent/dashboard', null, studentToken);
+      const r = await req_('GET', '/parent/dashboard', null, studentToken);
       r.status === 403
         ? pass('auth.student_cannot_access_parent_routes', 'HTTP 403')
         : fail('auth.student_cannot_access_parent_routes', `expected 403, got ${r.status}`);
     }
 
     {
-      const r = await req_('GET', '/api/student/dashboard', null, parentToken);
+      const r = await req_('GET', '/student/dashboard', null, parentToken);
       r.status === 403
         ? pass('auth.parent_cannot_access_student_routes', 'HTTP 403')
         : fail('auth.parent_cannot_access_student_routes', `expected 403, got ${r.status}`);

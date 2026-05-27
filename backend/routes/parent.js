@@ -1,4 +1,5 @@
 const express = require('express');
+const Anthropic = require('@anthropic-ai/sdk');
 const db = require('../db');
 const { requireAuth, requireParent } = require('../middleware/auth');
 
@@ -166,6 +167,42 @@ router.post('/assign', async (req, res) => {
   }
 });
 
+router.post('/assign-batch', async (req, res) => {
+  const { student_id, question_ids, due_date } = req.body;
+  if (!student_id || !Array.isArray(question_ids) || question_ids.length === 0) {
+    return res.status(400).json({ error: 'student_id and question_ids array required' });
+  }
+  if (question_ids.length > 5) {
+    return res.status(400).json({ error: 'Maximum 5 questions per practice set' });
+  }
+
+  try {
+    const linked = await db.get(
+      'SELECT id FROM parent_student_links WHERE parent_id = $1 AND student_id = $2',
+      [req.user.id, student_id]
+    );
+    if (!linked) return res.status(403).json({ error: 'Student not linked to your account' });
+
+    const ids = [];
+    for (const qid of question_ids) {
+      const owns = await db.get(
+        'SELECT id FROM questions WHERE id = $1 AND created_by = $2',
+        [qid, req.user.id]
+      );
+      if (!owns) continue;
+      const result = await db.run(
+        'INSERT INTO assignments (parent_id, student_id, question_id, due_date) VALUES ($1, $2, $3, $4) RETURNING id',
+        [req.user.id, student_id, qid, due_date || null]
+      );
+      ids.push(result.rows[0].id);
+    }
+
+    res.json({ assigned: ids.length, message: `${ids.length} question(s) assigned as practice set` });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to assign practice set' });
+  }
+});
+
 router.get('/student/:studentId/progress', async (req, res) => {
   try {
     const linked = await db.get(
@@ -192,6 +229,76 @@ router.get('/student/:studentId/progress', async (req, res) => {
     res.json({ attempts, stats });
   } catch (err) {
     res.status(500).json({ error: 'Failed to load progress' });
+  }
+});
+
+router.post('/questions/generate', async (req, res) => {
+  const { count = 20, difficulty = 'mixed', topic = 'math' } = req.body;
+  const safeCount = Math.min(Math.max(parseInt(count) || 20, 5), 50);
+
+  const difficultyInstruction = difficulty === 'mixed'
+    ? 'Mix difficulties: roughly 1/3 easy, 1/3 medium, 1/3 hard.'
+    : `All questions should be ${difficulty} difficulty.`;
+
+  const prompt = `Generate ${safeCount} ${topic} questions for primary/middle school students. ${difficultyInstruction}
+
+Mix question types: some as "multiple_choice" (with 4 options A/B/C/D) and some as "word_problem" (open answer).
+
+Return ONLY a valid JSON array, no markdown, no explanation. Each element must have:
+- "type": "multiple_choice" or "word_problem"
+- "difficulty": "easy", "medium", or "hard"
+- "question_text": the question string
+- "answer": the correct answer string (for multiple_choice, match the correct option_text exactly)
+- "options": array of {label, text, is_correct} objects — required for multiple_choice, omit for word_problem
+
+Example element:
+{"type":"multiple_choice","difficulty":"easy","question_text":"What is 3 + 4?","answer":"7","options":[{"label":"A","text":"6","is_correct":0},{"label":"B","text":"7","is_correct":1},{"label":"C","text":"8","is_correct":0},{"label":"D","text":"9","is_correct":0}]}
+
+Cover a wide variety of topics within ${topic}: arithmetic, fractions, geometry, algebra basics, word problems, percentages, ratios, etc. Make sure every question is different and interesting.`;
+
+  try {
+    const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+    const message = await client.messages.create({
+      model: 'claude-sonnet-4-6',
+      max_tokens: 8000,
+      messages: [{ role: 'user', content: prompt }]
+    });
+
+    const raw = message.content[0].text.trim();
+    const questions = JSON.parse(raw);
+
+    if (!Array.isArray(questions)) throw new Error('Expected JSON array');
+
+    const created = [];
+    for (const q of questions) {
+      if (!q.type || !q.difficulty || !q.question_text || !q.answer) continue;
+      if (!['multiple_choice', 'word_problem'].includes(q.type)) continue;
+      if (!['easy', 'medium', 'hard'].includes(q.difficulty)) continue;
+
+      const result = await db.run(
+        'INSERT INTO questions (created_by, type, difficulty, question_text, answer) VALUES ($1, $2, $3, $4, $5) RETURNING id',
+        [req.user.id, q.type, q.difficulty, q.question_text, q.answer]
+      );
+      const questionId = result.rows[0].id;
+
+      if (q.type === 'multiple_choice' && Array.isArray(q.options)) {
+        for (const opt of q.options) {
+          await db.run(
+            'INSERT INTO question_options (question_id, option_label, option_text, is_correct) VALUES ($1, $2, $3, $4)',
+            [questionId, opt.label, opt.text, opt.is_correct ? 1 : 0]
+          );
+        }
+      }
+
+      const saved = await db.get('SELECT * FROM questions WHERE id = $1', [questionId]);
+      const opts = await db.all('SELECT * FROM question_options WHERE question_id = $1', [questionId]);
+      created.push({ ...saved, options: opts });
+    }
+
+    res.json({ generated: created.length, questions: created });
+  } catch (err) {
+    console.error('AI generate error:', err.message);
+    res.status(500).json({ error: 'Failed to generate questions: ' + err.message });
   }
 });
 

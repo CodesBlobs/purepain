@@ -167,7 +167,10 @@
             <h2>My Questions</h2>
             <p>Create and manage your question bank</p>
           </div>
-          <button class="btn btn-primary" style="width:auto" onclick="openCreateQuestion()">+ New Question</button>
+          <div style="display:flex;gap:8px">
+            <button class="btn btn-outline" style="width:auto" onclick="openGenerateQuestions()">✨ Generate with AI</button>
+            <button class="btn btn-primary" style="width:auto" onclick="openCreateQuestion()">+ New Question</button>
+          </div>
         </div>
         <div id="my-questions-content"></div>
       </div>
@@ -292,6 +295,50 @@
         <input type="date" id="assign-due-date">
       </div>
       <button class="btn btn-primary" onclick="submitAssign()">Assign Question</button>
+    </div>
+  </div>
+</div>
+
+<!-- Generate Questions Modal -->
+<div id="modal-generate-questions" class="modal-backdrop" style="display:none" onclick="closeModal('modal-generate-questions',event)">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>✨ Generate Questions with AI</h3>
+      <button class="modal-close" onclick="closeModalById('modal-generate-questions')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div id="generate-error" class="alert alert-error" style="display:none"></div>
+      <div id="generate-success" class="alert alert-success" style="display:none"></div>
+      <div class="form-group">
+        <label>How many questions?</label>
+        <select id="gen-count">
+          <option value="10">10 questions</option>
+          <option value="20" selected>20 questions</option>
+          <option value="30">30 questions</option>
+          <option value="50">50 questions</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Difficulty</label>
+        <select id="gen-difficulty">
+          <option value="mixed" selected>Mixed (easy + medium + hard)</option>
+          <option value="easy">Easy only</option>
+          <option value="medium">Medium only</option>
+          <option value="hard">Hard only</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Topic</label>
+        <select id="gen-topic">
+          <option value="math" selected>General Math</option>
+          <option value="arithmetic">Arithmetic</option>
+          <option value="fractions and decimals">Fractions &amp; Decimals</option>
+          <option value="geometry">Geometry</option>
+          <option value="algebra">Algebra</option>
+          <option value="word problems">Word Problems</option>
+        </select>
+      </div>
+      <button class="btn btn-primary" id="gen-submit-btn" onclick="submitGenerateQuestions()">Generate Questions</button>
     </div>
   </div>
 </div>
