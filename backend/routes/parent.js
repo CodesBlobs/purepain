@@ -1,5 +1,4 @@
 const express = require('express');
-const Anthropic = require('@anthropic-ai/sdk');
 const db = require('../db');
 const { requireAuth, requireParent } = require('../middleware/auth');
 
@@ -257,14 +256,21 @@ Example element:
 Cover a wide variety of topics within ${topic}: arithmetic, fractions, geometry, algebra basics, word problems, percentages, ratios, etc. Make sure every question is different and interesting.`;
 
   try {
-    const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-    const message = await client.messages.create({
-      model: 'claude-sonnet-4-6',
-      max_tokens: 8000,
-      messages: [{ role: 'user', content: prompt }]
+    const aiRes = await fetch(process.env.AI_ENDPOINT, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${process.env.AI_API_KEY}`,
+      },
+      body: JSON.stringify({
+        model: process.env.AI_MODEL || 'llama3',
+        messages: [{ role: 'user', content: prompt }],
+        temperature: 0.7,
+      }),
     });
-
-    const raw = message.content[0].text.trim();
+    if (!aiRes.ok) throw new Error(`AI API error: ${aiRes.status}`);
+    const aiData = await aiRes.json();
+    const raw = (aiData.choices?.[0]?.message?.content || '').trim();
     const questions = JSON.parse(raw);
 
     if (!Array.isArray(questions)) throw new Error('Expected JSON array');
