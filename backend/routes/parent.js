@@ -263,14 +263,14 @@ Cover a wide variety of topics within ${topic}: arithmetic, fractions, geometry,
         'Authorization': `Bearer ${process.env.AI_API_KEY}`,
       },
       body: JSON.stringify({
-        model: process.env.AI_MODEL || 'llama3',
+        model: process.env.AI_MODEL || 'gemma3:12b',
         messages: [{ role: 'user', content: prompt }],
-        temperature: 0.7,
+        stream: false,
       }),
     });
     if (!aiRes.ok) throw new Error(`AI API error: ${aiRes.status}`);
     const aiData = await aiRes.json();
-    const raw = (aiData.choices?.[0]?.message?.content || '').trim();
+    const raw = (aiData.message?.content || '').trim();
     const questions = JSON.parse(raw);
 
     if (!Array.isArray(questions)) throw new Error('Expected JSON array');
