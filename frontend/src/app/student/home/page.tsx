@@ -1,11 +1,13 @@
 'use client'
 
 import { useQuery } from '@tanstack/react-query'
-import { CheckCircle2, XCircle, ClipboardList, TrendingUp, Clock, BookOpen } from 'lucide-react'
+import { CheckCircle2, XCircle, ClipboardList, TrendingUp, Clock, BookOpen, ArrowRight } from 'lucide-react'
+import Link from 'next/link'
 import { api } from '@/lib/api'
 import { useAuthStore } from '@/store/auth'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import { timeAgo, capitalize } from '@/lib/utils'
 import type { Assignment, Attempt, StudentStat } from '@/types'
 
@@ -100,6 +102,13 @@ export default function StudentHome() {
               {pending.length > 0 && (
                 <Badge variant="secondary" className="ml-auto">{pending.length}</Badge>
               )}
+              {pending.length > 0 && (
+                <Link href="/student/assignments">
+                  <Button variant="ghost" size="sm" className="gap-1 text-xs h-7 px-2">
+                    View all <ArrowRight className="w-3 h-3" />
+                  </Button>
+                </Link>
+              )}
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -110,16 +119,19 @@ export default function StudentHome() {
             ) : (
               <ul className="space-y-2">
                 {pending.slice(0, 5).map((a) => (
-                  <li key={a.id} className="flex items-start gap-3 p-3 rounded-lg bg-muted/40">
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium line-clamp-2">{a.question_text}</p>
-                      <div className="flex items-center gap-2 mt-1">
-                        <Badge variant={a.difficulty as 'easy' | 'medium' | 'hard'} className="text-xs">
-                          {capitalize(a.difficulty)}
-                        </Badge>
-                        <span className="text-xs text-muted-foreground">from {a.parent_name}</span>
+                  <li key={a.id}>
+                    <Link href="/student/assignments" className="flex items-start gap-3 p-3 rounded-lg bg-muted/40 hover:bg-muted/70 transition-colors cursor-pointer">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium line-clamp-2">{a.question_text}</p>
+                        <div className="flex items-center gap-2 mt-1">
+                          <Badge variant={a.difficulty as 'easy' | 'medium' | 'hard'} className="text-xs">
+                            {capitalize(a.difficulty)}
+                          </Badge>
+                          <span className="text-xs text-muted-foreground">from {a.parent_name}</span>
+                        </div>
                       </div>
-                    </div>
+                      <ArrowRight className="w-4 h-4 text-muted-foreground flex-shrink-0 mt-0.5" />
+                    </Link>
                   </li>
                 ))}
                 {pending.length > 5 && (

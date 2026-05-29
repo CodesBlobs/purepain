@@ -25,6 +25,8 @@ export default function PracticePage() {
   const [selected, setSelected] = useState<string | null>(null)
   const [textInput, setTextInput] = useState('')
   const [result, setResult] = useState<SubmitResult | null>(null)
+  const [sessionCorrect, setSessionCorrect] = useState(0)
+  const [sessionTotal, setSessionTotal] = useState(0)
 
   const { data: question, isFetching, refetch } = useQuery<Question>({
     queryKey: ['practice', difficulty],
@@ -58,7 +60,12 @@ export default function PracticePage() {
     },
     onSuccess: (data) => {
       setResult(data)
+      setSessionTotal((n) => n + 1)
+      if (data.is_correct) setSessionCorrect((n) => n + 1)
       qc.invalidateQueries({ queryKey: ['student-dashboard'] })
+      if (data.is_correct) {
+        setTimeout(() => handleNext(), 1200)
+      }
     },
   })
 
@@ -86,9 +93,17 @@ export default function PracticePage() {
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
-      <div>
-        <h1 className="text-2xl font-black text-foreground">Practice</h1>
-        <p className="text-muted-foreground mt-1">Work through questions at your own pace</p>
+      <div className="flex items-start justify-between">
+        <div>
+          <h1 className="text-2xl font-black text-foreground">Practice</h1>
+          <p className="text-muted-foreground mt-1">Work through questions at your own pace</p>
+        </div>
+        {sessionTotal > 0 && (
+          <div className="text-right">
+            <p className="text-2xl font-black text-foreground">{sessionCorrect}/{sessionTotal}</p>
+            <p className="text-xs text-muted-foreground">this session</p>
+          </div>
+        )}
       </div>
 
       {/* Difficulty selector */}
@@ -213,9 +228,13 @@ export default function PracticePage() {
                 >
                   {submitMutation.isPending ? 'Checking…' : 'Submit Answer'}
                 </Button>
+              ) : result.is_correct ? (
+                <Button disabled className="w-full gap-2" size="lg" variant="outline">
+                  Next question incoming…
+                </Button>
               ) : (
                 <Button onClick={handleNext} className="w-full gap-2" size="lg">
-                  Next Question
+                  Try another
                   <ChevronRight className="w-4 h-4" />
                 </Button>
               )}
