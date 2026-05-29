@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Calculator, GraduationCap, Users } from 'lucide-react'
 import { useAuthStore } from '@/store/auth'
@@ -14,7 +14,7 @@ import type { User } from '@/types'
 
 type AccountType = 'student' | 'parent'
 
-export default function AuthPage() {
+function AuthForm() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const { user, setAuth } = useAuthStore()
@@ -193,5 +193,13 @@ export default function AuthPage() {
         </Tabs>
       </div>
     </div>
+  )
+}
+
+export default function AuthPage() {
+  return (
+    <Suspense>
+      <AuthForm />
+    </Suspense>
   )
 }
