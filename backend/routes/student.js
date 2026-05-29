@@ -98,6 +98,29 @@ router.get('/dashboard', async (req, res) => {
   }
 });
 
+router.get('/pending-assignments', async (req, res) => {
+  try {
+    const assignments = await db.all(`
+      SELECT a.id as assignment_id, q.id as question_id, q.question_text, q.type, q.difficulty, q.answer
+      FROM assignments a
+      JOIN questions q ON q.id = a.question_id
+      WHERE a.student_id = $1 AND a.status = 'pending'
+      ORDER BY a.assigned_at ASC
+    `, [req.user.id]);
+
+    const withOptions = await Promise.all(assignments.map(async a => ({
+      ...a,
+      from_assignment: true,
+      options: (await db.all('SELECT * FROM question_options WHERE question_id = $1', [a.question_id]))
+        .map(o => ({ option_label: o.option_label, option_text: o.option_text, is_correct: o.is_correct }))
+    })));
+
+    res.json({ assignments: withOptions });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to load pending assignments' });
+  }
+});
+
 router.get('/practice', async (req, res) => {
   const difficulty = ['easy', 'medium', 'hard'].includes(req.query.difficulty)
     ? req.query.difficulty

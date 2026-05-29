@@ -42,6 +42,16 @@ function renderMath(el) {
   if (window.MathJax?.typesetPromise) MathJax.typesetPromise([el]).catch(() => {});
 }
 
+function renderIcons() {
+  if (window.lucide) lucide.createIcons();
+}
+
+function scoreIndicators(filled, total) {
+  return Array.from({ length: total }, (_, i) =>
+    `<div class="score-dot ${i < filled ? 'hit' : 'miss'}"></div>`
+  ).join('');
+}
+
 function timeAgo(dateStr) {
   const diff = (Date.now() - new Date(dateStr)) / 1000;
   if (diff < 60) return 'just now';
@@ -183,22 +193,23 @@ function buildNav() {
   const nav = document.getElementById('sidebar-nav');
   const items = currentUser.account_type === 'student'
     ? [
-        { id: 'student-home',       icon: '🏠', label: 'Home' },
-        { id: 'practice',           icon: '🧮', label: 'Practice' },
-        { id: 'practice-challenge', icon: '🏆', label: 'Challenge' },
-        { id: 'assignments',        icon: '📋', label: 'Assignments' },
+        { id: 'student-home',       icon: 'home',           label: 'Home' },
+        { id: 'practice',           icon: 'calculator',     label: 'Practice' },
+        { id: 'practice-challenge', icon: 'trophy',         label: 'Challenge' },
+        { id: 'assignments',        icon: 'clipboard-list', label: 'Assignments' },
       ]
     : [
-        { id: 'parent-home',   icon: '🏠', label: 'Dashboard' },
-        { id: 'my-questions',  icon: '📝', label: 'My Questions' },
-        { id: 'assign',        icon: '📤', label: 'Assign Work' },
+        { id: 'parent-home',  icon: 'layout-dashboard', label: 'Dashboard' },
+        { id: 'my-questions', icon: 'file-text',         label: 'My Questions' },
+        { id: 'assign',       icon: 'send',              label: 'Assign Work' },
       ];
 
   nav.innerHTML = items.map(i => `
     <button class="nav-item" id="nav-${i.id}" onclick="navigateTo('${i.id}')">
-      <span class="nav-icon">${i.icon}</span> ${i.label}
+      <span class="nav-icon"><i data-lucide="${i.icon}" class="icon"></i></span> ${i.label}
     </button>
   `).join('');
+  renderIcons();
 }
 
 function navigateTo(page, pushHistory = true) {
@@ -251,7 +262,7 @@ async function loadStudentHome() {
 
     document.getElementById('student-dashboard-content').innerHTML = `
       <div class="page-header">
-        <h2>Welcome back, ${currentUser.name.split(' ')[0]}! 👋</h2>
+        <h2>Welcome back, ${currentUser.name.split(' ')[0]}</h2>
         <p>${parents.length ? `Linked to: ${parents.map(p => p.name).join(', ')}` : 'No parent linked yet'}</p>
       </div>
 
@@ -279,9 +290,9 @@ async function loadStudentHome() {
         <div class="card">
           <div class="card-header"><h3>Quick Actions</h3></div>
           <div class="card-body" style="display:flex;flex-direction:column;gap:10px">
-            <button class="btn btn-primary" onclick="navigateTo('practice-challenge')">🏆 Start Challenge</button>
-            <button class="btn btn-outline" onclick="navigateTo('practice')">🧮 Free Practice</button>
-            <button class="btn btn-outline" onclick="navigateTo('assignments')">📋 View Assignments (${assignments.length})</button>
+            <button class="btn btn-primary" onclick="navigateTo('practice-challenge')"><i data-lucide="trophy" class="icon"></i> Start Challenge</button>
+            <button class="btn btn-outline" onclick="navigateTo('practice')"><i data-lucide="calculator" class="icon"></i> Free Practice</button>
+            <button class="btn btn-outline" onclick="navigateTo('assignments')"><i data-lucide="clipboard-list" class="icon"></i> Assignments (${assignments.length})</button>
           </div>
         </div>
         <div class="card">
@@ -297,11 +308,12 @@ async function loadStudentHome() {
                   </div>
                 `).join('')}
               </div>
-            ` : '<div class="empty-state"><div class="empty-icon">📊</div><p>No attempts yet — start practicing!</p></div>'}
+            ` : '<div class="empty-state"><div class="empty-icon"><i data-lucide="bar-chart-2" class="icon icon-xl"></i></div><p>No attempts yet — start practicing!</p></div>'}
           </div>
         </div>
       </div>
     `;
+    renderIcons();
   } catch (err) {
     document.getElementById('student-dashboard-content').innerHTML = `<div class="alert alert-error">${err.message}</div>`;
   }
@@ -347,9 +359,9 @@ function renderPracticeQuestion() {
 
   container.innerHTML = `
     <div class="question-card">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
-        <div class="q-number">${isAssigned ? '<span style="color:var(--primary);font-weight:600">📚 Assigned by parent</span>' : 'Generated Question'}</div>
-        <div class="streak-display">🔥 ${practiceState.streak} streak</div>
+      <div class="q-number">
+        <span>${isAssigned ? '<span style="color:var(--primary);font-weight:600;display:inline-flex;align-items:center;gap:5px"><i data-lucide="book-open" class="icon icon-sm"></i> Assigned by parent</span>' : 'Generated Question'}</span>
+        <div class="streak-display"><i data-lucide="zap" class="icon icon-sm"></i> ${practiceState.streak} streak</div>
       </div>
       <div class="q-content">${q.question_text}</div>
       ${hasOptions ? `
@@ -372,6 +384,7 @@ function renderPracticeQuestion() {
   `;
   if (!hasOptions) setTimeout(() => document.getElementById('practice-text-answer')?.focus(), 50);
   renderMath(container);
+  renderIcons();
 }
 
 async function submitPracticeAnswer(chosen) {
@@ -398,10 +411,12 @@ async function submitPracticeAnswer(chosen) {
   resultEl.style.display = 'block';
   resultEl.innerHTML = `
     <div class="result-banner ${isCorrect ? 'correct' : 'wrong'}">
-      ${isCorrect ? '✅ Correct!' : `❌ Wrong — the answer was <strong>${q.answer}</strong>`}
+      <i data-lucide="${isCorrect ? 'check-circle' : 'x-circle'}" class="icon"></i>
+      ${isCorrect ? 'Correct!' : `Wrong — the answer was <strong>${q.answer}</strong>`}
     </div>
-    <button class="btn btn-primary" onclick="loadNextQuestion()">Next Question →</button>
+    <button class="btn btn-primary" onclick="loadNextQuestion()">Next Question</button>
   `;
+  renderIcons();
 
   if (isCorrect) practiceState.streak++;
   else practiceState.streak = 0;
@@ -491,7 +506,7 @@ function renderChallengeLobby() {
     </div>
     <div class="challenge-lobby">
       <div class="challenge-info-card">
-        <div class="challenge-icon">🏆</div>
+        <div class="challenge-icon"><i data-lucide="trophy" class="icon icon-xl"></i></div>
         <h3>Ready for a challenge?</h3>
         <p>Answer 5 math questions. You can go back and change answers — your score is revealed only when you submit at the end.</p>
         <div class="diff-selector" style="justify-content:center;margin:24px 0 0">
@@ -500,11 +515,12 @@ function renderChallengeLobby() {
           <button class="diff-btn ${challengeState.difficulty === 'hard'   ? 'active hard'   : ''}" onclick="setChallengeDifficulty('hard')">Hard</button>
         </div>
         <button class="btn btn-primary" style="margin-top:24px;width:auto;padding:14px 48px;font-size:16px" onclick="startChallenge()">
-          Start Challenge →
+          Start Challenge
         </button>
       </div>
     </div>
   `;
+  renderIcons();
 }
 
 function setChallengeDifficulty(d) {
@@ -516,17 +532,25 @@ async function startChallenge() {
   document.getElementById('challenge-content').innerHTML =
     '<div style="text-align:center;padding:80px;color:var(--gray-400)">Loading questions…</div>';
   try {
+    let questions = [];
+
     if (token) {
-      challengeState.questions = await Promise.all(
-        Array.from({ length: challengeState.total }, () =>
-          api(`/api/student/practice?difficulty=${challengeState.difficulty}`)
-        )
-      );
-    } else {
-      challengeState.questions = Array.from({ length: challengeState.total }, () =>
-        generateMathQuestion(challengeState.difficulty)
-      );
+      const data = await api('/api/student/pending-assignments');
+      const assigned = (data.assignments || []).slice(0, challengeState.total);
+      questions = [...assigned];
     }
+
+    const remaining = challengeState.total - questions.length;
+    for (let i = 0; i < remaining; i++) {
+      questions.push(generateMathQuestion(challengeState.difficulty));
+    }
+
+    for (let i = questions.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [questions[i], questions[j]] = [questions[j], questions[i]];
+    }
+
+    challengeState.questions = questions;
     challengeState.selectedAnswers = new Array(challengeState.total).fill(null);
     challengeState.current = 0;
     renderChallengeQuestion();
@@ -562,37 +586,53 @@ function renderChallengeQuestion() {
   const selected = challengeState.selectedAnswers[challengeState.current];
   const isLast = challengeState.current === challengeState.total - 1;
   const allAnswered = challengeState.selectedAnswers.every(a => a !== null);
+  const hasOptions = Array.isArray(q.options) && q.options.length > 0;
 
   const challengeContentEl = document.getElementById('challenge-content');
   challengeContentEl.innerHTML = `
     ${buildChallengeProgress()}
     <div class="question-card" style="margin-top:16px">
+      ${q.from_assignment ? `<div style="margin-bottom:10px"><span class="assigned-tag"><i data-lucide="book-open" class="icon icon-sm"></i> Assigned by parent</span></div>` : ''}
       <div class="q-content">${q.question_text}</div>
-      <div class="options-grid">
-        ${q.options.map(o => `
-          <button class="option-btn ${selected === o.option_text ? 'selected' : ''}"
-                  data-value="${o.option_text}"
-                  onclick="selectChallengeAnswer(this.dataset.value)">
-            <span class="opt-label">${o.option_label}</span>${o.option_text}
-          </button>
-        `).join('')}
-      </div>
+      ${hasOptions ? `
+        <div class="options-grid">
+          ${q.options.map(o => `
+            <button class="option-btn ${selected === o.option_text ? 'selected' : ''}"
+                    data-value="${o.option_text}"
+                    onclick="selectChallengeAnswer(this.dataset.value)">
+              <span class="opt-label">${o.option_label}</span>${o.option_text}
+            </button>
+          `).join('')}
+        </div>
+      ` : `
+        <div style="margin-top:16px;display:flex;gap:8px">
+          <input type="text" id="challenge-text-answer" class="form-control" placeholder="Type your answer…"
+                 value="${selected || ''}"
+                 onkeydown="if(event.key==='Enter'){selectChallengeAnswer(this.value.trim());}"
+                 style="flex:1">
+          <button class="btn btn-primary" style="width:auto"
+                  onclick="selectChallengeAnswer(document.getElementById('challenge-text-answer').value.trim())">Save</button>
+        </div>
+      `}
       <div class="challenge-nav">
         ${challengeState.current > 0
-          ? `<button class="btn btn-outline" onclick="challengeGoTo(${challengeState.current - 1})">← Previous</button>`
+          ? `<button class="btn btn-outline" onclick="challengeGoTo(${challengeState.current - 1})"><i data-lucide="arrow-left" class="icon"></i> Previous</button>`
           : `<div></div>`}
         ${isLast
           ? `<button class="btn btn-primary" style="width:auto" onclick="submitChallenge()" ${allAnswered ? '' : 'disabled title="Answer all questions to submit"'}>
-               ${allAnswered ? '🎉 Submit Challenge' : `Submit (${challengeState.selectedAnswers.filter(a=>a!==null).length}/5 answered)`}
+               ${allAnswered ? '<i data-lucide="check-circle" class="icon"></i> Submit Challenge' : `Submit (${challengeState.selectedAnswers.filter(a=>a!==null).length}/5 answered)`}
              </button>`
-          : `<button class="btn btn-primary" style="width:auto" onclick="challengeGoTo(${challengeState.current + 1})">Next →</button>`}
+          : `<button class="btn btn-primary" style="width:auto" onclick="challengeGoTo(${challengeState.current + 1})">Next <i data-lucide="arrow-right" class="icon"></i></button>`}
       </div>
     </div>
   `;
   renderMath(challengeContentEl);
+  renderIcons();
+  if (!hasOptions) setTimeout(() => document.getElementById('challenge-text-answer')?.focus(), 50);
 }
 
 function selectChallengeAnswer(value) {
+  if (!value) return;
   challengeState.selectedAnswers[challengeState.current] = value;
   renderChallengeQuestion();
 }
@@ -606,15 +646,26 @@ function challengeGoTo(idx) {
 function submitChallenge() {
   challengeState.results = challengeState.questions.map((q, i) => {
     const chosen = challengeState.selectedAnswers[i];
-    const isCorrect = chosen !== null && chosen === q.answer;
-    return { question_text: q.question_text, answer: q.answer, answer_given: chosen, is_correct: isCorrect };
+    const isCorrect = chosen !== null &&
+      chosen.trim().toLowerCase() === q.answer.trim().toLowerCase();
+    return { question_text: q.question_text, answer: q.answer, answer_given: chosen, is_correct: isCorrect, from_assignment: !!q.from_assignment };
   });
   challengeState.score = challengeState.results.filter(r => r.is_correct).length;
 
   if (token) {
     challengeState.questions.forEach((q, i) => {
       const chosen = challengeState.selectedAnswers[i];
-      if (chosen) {
+      if (!chosen) return;
+      if (q.from_assignment) {
+        api('/api/student/submit', {
+          method: 'POST',
+          body: JSON.stringify({
+            question_id: q.question_id,
+            assignment_id: q.assignment_id,
+            answer_given: chosen,
+          })
+        }).catch(() => {});
+      } else {
         api('/api/student/submit', {
           method: 'POST',
           body: JSON.stringify({
@@ -637,7 +688,6 @@ function renderChallengeComplete() {
   const { score, total, results, difficulty } = challengeState;
   const pct = Math.round((score / total) * 100);
   const starsFilled = Math.round((score / total) * 5);
-  const stars = '⭐'.repeat(starsFilled) + '☆'.repeat(5 - starsFilled);
 
   let grade, gradeColor;
   if (pct === 100) { grade = 'Perfect!'; gradeColor = 'var(--success)'; }
@@ -648,27 +698,27 @@ function renderChallengeComplete() {
   document.getElementById('complete-content').innerHTML = `
     <div class="complete-screen">
       <div class="complete-card">
-        <div class="complete-badge">🔒 Challenge Complete</div>
-        <div class="complete-icon">🎉</div>
+        <div class="complete-badge"><i data-lucide="lock" class="icon icon-sm"></i> Challenge Complete</div>
+        <div class="complete-icon"><i data-lucide="party-popper" class="icon icon-xl"></i></div>
         <h2>${grade}</h2>
         <p class="complete-subtitle">${difficulty.charAt(0).toUpperCase() + difficulty.slice(1)} difficulty</p>
         <div class="score-display" style="color:${gradeColor}">${pct}%</div>
         <div class="score-fraction">${score} / ${total} correct</div>
-        <div class="stars">${stars}</div>
+        <div class="stars">${scoreIndicators(starsFilled, 5)}</div>
 
         <div class="result-breakdown">
           ${results.map((r, i) => `
             <div class="result-row ${r.is_correct ? 'correct' : 'wrong'}">
-              <span class="result-num">Q${i + 1}</span>
-              <span class="result-icon">${r.is_correct ? '✅' : '❌'}</span>
-              <span class="result-q">${r.question_text}</span>
+              <span class="result-num">Q${i + 1}${r.from_assignment ? ' ·' : ''}</span>
+              <span class="result-icon"><i data-lucide="${r.is_correct ? 'check-circle' : 'x-circle'}" class="icon"></i></span>
+              <span class="result-q">${r.question_text}${r.from_assignment ? ' <span style="font-size:10px;color:var(--primary);font-weight:700">ASSIGNED</span>' : ''}</span>
               <span class="result-ans">${r.is_correct ? r.answer_given : `<s>${r.answer_given}</s> → ${r.answer}`}</span>
             </div>
           `).join('')}
         </div>
 
         ${!currentUser ? `
-        <div style="background:var(--primary-light,#eff6ff);border-radius:12px;padding:16px 24px;margin-top:24px;text-align:center">
+        <div style="background:var(--primary-light);border-radius:12px;padding:16px 24px;margin-top:24px;text-align:center">
           <p style="margin:0 0 12px;font-weight:600">Sign up to save your progress and track streaks!</p>
           <button class="btn btn-primary" style="width:auto" onclick="document.getElementById('auth-screen').style.display='';document.getElementById('app-screen').style.display='none'">Create Account</button>
         </div>` : ''}
@@ -679,6 +729,7 @@ function renderChallengeComplete() {
       </div>
     </div>
   `;
+  renderIcons();
 }
 
 function renderFullCorrect() {
@@ -686,19 +737,19 @@ function renderFullCorrect() {
   document.getElementById('full-correct-content').innerHTML = `
     <div class="complete-screen">
       <div class="complete-card" style="border-top:4px solid var(--success)">
-        <div class="complete-badge" style="background:var(--success);color:#fff">🌟 Perfect Score</div>
-        <div class="complete-icon" style="font-size:72px">🏆</div>
+        <div class="complete-badge" style="background:var(--success);color:#fff"><i data-lucide="star" class="icon icon-sm"></i> Perfect Score</div>
+        <div class="complete-icon" style="background:#d1fae5;color:var(--success)"><i data-lucide="trophy" class="icon icon-xl"></i></div>
         <h2 style="color:var(--success)">Flawless!</h2>
         <p class="complete-subtitle">${total}/${total} correct on ${difficulty.charAt(0).toUpperCase() + difficulty.slice(1)}</p>
         <div class="score-display" style="color:var(--success)">100%</div>
-        <div class="stars" style="font-size:28px">⭐⭐⭐⭐⭐</div>
-        <p style="color:var(--gray-500);margin:16px 0 24px">You got every single question right. Incredible work!</p>
+        <div class="stars">${scoreIndicators(5, 5)}</div>
+        <p style="color:var(--gray-500);margin:0 0 24px;font-weight:500">You got every single question right. Incredible work!</p>
 
         <div class="result-breakdown">
           ${challengeState.results.map((r, i) => `
             <div class="result-row correct">
               <span class="result-num">Q${i + 1}</span>
-              <span class="result-icon">✅</span>
+              <span class="result-icon"><i data-lucide="check-circle" class="icon"></i></span>
               <span class="result-q">${r.question_text}</span>
               <span class="result-ans">${r.answer_given}</span>
             </div>
@@ -707,7 +758,7 @@ function renderFullCorrect() {
 
         ${!currentUser ? `
         <div style="background:#f0fdf4;border-radius:12px;padding:16px 24px;margin-top:24px;text-align:center">
-          <p style="margin:0 0 12px;font-weight:600">Sign up to save your streak and compete on the leaderboard!</p>
+          <p style="margin:0 0 12px;font-weight:600">Sign up to save your streak!</p>
           <button class="btn btn-primary" style="width:auto" onclick="document.getElementById('auth-screen').style.display='';document.getElementById('app-screen').style.display='none'">Create Account</button>
         </div>` : ''}
 
@@ -718,6 +769,7 @@ function renderFullCorrect() {
       </div>
     </div>
   `;
+  renderIcons();
 }
 
 function restartChallenge() {
@@ -734,13 +786,14 @@ async function loadAssignments() {
     const assignments = data.assignments;
 
     if (!assignments.length) {
-      container.innerHTML = `<div class="empty-state"><div class="empty-icon">📭</div><p>No pending assignments. You\'re all caught up!</p></div>`;
+      container.innerHTML = `<div class="empty-state"><div class="empty-icon"><i data-lucide="inbox" class="icon icon-xl"></i></div><p>No pending assignments. You\'re all caught up!</p></div>`;
+      renderIcons();
       return;
     }
 
     container.innerHTML = assignments.map(a => `
       <div class="question-card" id="assign-${a.id}" style="margin-bottom:16px">
-        <div class="assigned-tag">📤 Assigned by ${a.parent_name}${a.due_date ? ` · Due ${a.due_date}` : ''}</div>
+        <div class="assigned-tag"><i data-lucide="send" class="icon icon-sm"></i> Assigned by ${a.parent_name}${a.due_date ? ` · Due ${a.due_date}` : ''}</div>
         <div style="margin-bottom:8px">
           <span class="q-badge ${a.type}">${a.type.replace('_', ' ')}</span>
           <span class="diff-badge ${a.difficulty}" style="margin-left:6px">${a.difficulty}</span>
@@ -764,6 +817,7 @@ async function loadAssignments() {
       </div>
     `).join('');
     renderMath(container);
+    renderIcons();
   } catch (err) {
     container.innerHTML = `<div class="alert alert-error">${err.message}</div>`;
   }
@@ -789,9 +843,11 @@ async function submitAssignment(assignmentId, questionId, chosen) {
     resultEl.style.display = 'block';
     resultEl.innerHTML = `
       <div class="result-banner ${isCorrect ? 'correct' : 'wrong'}">
-        ${isCorrect ? '✅ Correct! Assignment complete.' : `❌ Wrong — the answer was <strong>${result.correct_answer}</strong>`}
+        <i data-lucide="${isCorrect ? 'check-circle' : 'x-circle'}" class="icon"></i>
+        ${isCorrect ? 'Correct! Assignment complete.' : `Wrong — the answer was <strong>${result.correct_answer}</strong>`}
       </div>
     `;
+    renderIcons();
   } catch (err) {
     card.dataset.answered = '';
     opts.forEach(b => b.disabled = false);
@@ -819,9 +875,11 @@ async function submitAssignmentWord(assignmentId, questionId) {
     resultEl.style.display = 'block';
     resultEl.innerHTML = `
       <div class="result-banner ${result.is_correct ? 'correct' : 'wrong'}">
-        ${result.is_correct ? '✅ Correct! Assignment complete.' : `❌ Wrong — the answer was <strong>${result.correct_answer}</strong>`}
+        <i data-lucide="${result.is_correct ? 'check-circle' : 'x-circle'}" class="icon"></i>
+        ${result.is_correct ? 'Correct! Assignment complete.' : `Wrong — the answer was <strong>${result.correct_answer}</strong>`}
       </div>
     `;
+    renderIcons();
   } catch (err) {}
 }
 
@@ -834,7 +892,7 @@ async function loadParentHome() {
     const container = document.getElementById('parent-dashboard-content');
     container.innerHTML = `
       <div class="page-header">
-        <h2>Dashboard 👋</h2>
+        <h2>Dashboard</h2>
         <p>Welcome back, ${currentUser.name.split(' ')[0]}</p>
       </div>
 
@@ -847,7 +905,7 @@ async function loadParentHome() {
         ${data.students.map(s => renderStudentCard(s)).join('')}
         ${data.students.length < 2 ? `
           <div class="add-student-card" onclick="openLinkStudent()">
-            <div class="add-icon">➕</div>
+            <div class="add-icon"><i data-lucide="user-plus" class="icon icon-md"></i></div>
             <p>Link a student account</p>
           </div>
         ` : ''}
@@ -857,8 +915,8 @@ async function loadParentHome() {
         <div class="card">
           <div class="card-header"><h3>Quick Actions</h3></div>
           <div class="card-body" style="display:flex;flex-direction:column;gap:10px">
-            <button class="btn btn-primary" onclick="navigateTo('my-questions')">📝 Create a Question</button>
-            <button class="btn btn-outline" onclick="navigateTo('assign')">📤 Assign Work</button>
+            <button class="btn btn-primary" onclick="navigateTo('my-questions')"><i data-lucide="file-text" class="icon"></i> My Questions</button>
+            <button class="btn btn-outline" onclick="navigateTo('assign')"><i data-lucide="send" class="icon"></i> Assign Work</button>
           </div>
         </div>
         <div class="card">
@@ -871,6 +929,7 @@ async function loadParentHome() {
         </div>
       </div>
     `;
+    renderIcons();
   } catch (err) {
     document.getElementById('parent-dashboard-content').innerHTML = `<div class="alert alert-error">${err.message}</div>`;
   }
@@ -907,7 +966,7 @@ function renderStudentCard(s) {
       </div>
       <div style="display:flex;gap:8px">
         <button class="btn btn-outline btn-sm" style="flex:1" onclick="viewStudentProgress(${s.id},'${s.name}')">View Progress</button>
-        <button class="btn btn-danger btn-sm btn-icon" onclick="unlinkStudent(${s.id})" title="Unlink">✕</button>
+        <button class="btn btn-danger btn-sm btn-icon" onclick="unlinkStudent(${s.id})" title="Unlink"><i data-lucide="user-minus" class="icon"></i></button>
       </div>
     </div>
   `;
@@ -927,7 +986,8 @@ function renderQuestionsList() {
   const qs = parentData.my_questions;
 
   if (!qs.length) {
-    container.innerHTML = `<div class="empty-state"><div class="empty-icon">📝</div><p>No questions yet — create your first one!</p></div>`;
+    container.innerHTML = `<div class="empty-state"><div class="empty-icon"><i data-lucide="file-text" class="icon icon-xl"></i></div><p>No questions yet — create your first one!</p></div>`;
+    renderIcons();
     return;
   }
 
@@ -1046,7 +1106,7 @@ async function submitGenerateQuestions() {
     if (!parentData.my_questions) parentData.my_questions = [];
     parentData.my_questions.unshift(...result.questions);
     renderQuestionsList();
-    showAlert('generate-success', `✅ ${result.generated} questions generated and added to your bank!`);
+    showAlert('generate-success', `${result.generated} questions generated and added to your bank!`);
     btn.textContent = 'Generate More';
     btn.disabled = false;
   } catch (err) {
@@ -1065,12 +1125,14 @@ async function loadAssignPage() {
     const container = document.getElementById('assign-content');
 
     if (!data.students.length) {
-      container.innerHTML = `<div class="empty-state"><div class="empty-icon">👤</div><p>Link a student first to assign questions.</p><button class="btn btn-primary" style="width:auto;margin-top:16px" onclick="openLinkStudent()">Link a Student</button></div>`;
+      container.innerHTML = `<div class="empty-state"><div class="empty-icon"><i data-lucide="user" class="icon icon-xl"></i></div><p>Link a student first to assign questions.</p><button class="btn btn-primary" style="width:auto;margin-top:16px" onclick="openLinkStudent()">Link a Student</button></div>`;
+      renderIcons();
       return;
     }
 
     if (!data.my_questions.length) {
-      container.innerHTML = `<div class="empty-state"><div class="empty-icon">📝</div><p>Create some questions first before assigning them.</p><button class="btn btn-primary" style="width:auto;margin-top:16px" onclick="navigateTo('my-questions')">Create Questions</button></div>`;
+      container.innerHTML = `<div class="empty-state"><div class="empty-icon"><i data-lucide="file-text" class="icon icon-xl"></i></div><p>Create some questions first before assigning them.</p><button class="btn btn-primary" style="width:auto;margin-top:16px" onclick="navigateTo('my-questions')">Create Questions</button></div>`;
+      renderIcons();
       return;
     }
 
@@ -1102,6 +1164,7 @@ async function loadAssignPage() {
         `).join('')}
       </div>
     `;
+    renderIcons();
   } catch (err) {
     document.getElementById('assign-content').innerHTML = `<div class="alert alert-error">${err.message}</div>`;
   }
@@ -1156,7 +1219,7 @@ async function submitAssignSet() {
     updateAssignSetButton();
     btn.textContent = 'Assign Practice Set';
     const successEl = document.getElementById('assign-set-success');
-    successEl.textContent = `✅ ${result.assigned} question(s) added to their practice queue!`;
+    successEl.textContent = `${result.assigned} question(s) added to their practice queue!`;
     successEl.style.display = 'block';
     setTimeout(() => { successEl.style.display = 'none'; }, 4000);
   } catch (err) {
@@ -1287,8 +1350,9 @@ async function viewStudentProgress(studentId, name) {
             </div>
           `).join('')}
         </div>
-      ` : '<div class="empty-state"><div class="empty-icon">📊</div><p>No attempts yet</p></div>'}
+      ` : '<div class="empty-state"><div class="empty-icon"><i data-lucide="bar-chart-2" class="icon icon-xl"></i></div><p>No attempts yet</p></div>'}
     `;
+    renderIcons();
   } catch (err) {
     document.getElementById('progress-modal-body').innerHTML = `<div class="alert alert-error">${err.message}</div>`;
   }
@@ -1312,6 +1376,8 @@ window.addEventListener('popstate', e => {
 });
 
 // ── Boot ───────────────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => renderIcons());
+
 (async function init() {
   if (!token) {
     if (window.location.pathname.slice(1) === 'practice-challenge') enterGuestChallenge();

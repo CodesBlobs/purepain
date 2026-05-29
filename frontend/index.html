@@ -20,7 +20,9 @@
 <div id="auth-screen">
   <div class="auth-card">
     <div class="auth-logo">
-      <div class="logo-icon">✏️</div>
+      <div class="logo-icon">
+        <i data-lucide="calculator" class="icon icon-lg"></i>
+      </div>
       <h1>PurePain</h1>
       <p>Math practice that actually works</p>
     </div>
@@ -63,14 +65,14 @@
         <label>Account type</label>
         <div class="account-type-grid">
           <div class="account-type-option selected" onclick="selectAccountType('student')" id="type-student">
-            <div class="type-icon">🎒</div>
+            <div class="type-icon"><i data-lucide="graduation-cap" class="icon icon-md"></i></div>
             <div class="type-label">Student</div>
             <div class="type-desc">Practice math problems</div>
           </div>
           <div class="account-type-option" onclick="selectAccountType('parent')" id="type-parent">
-            <div class="type-icon">👨‍👧</div>
+            <div class="type-icon"><i data-lucide="users" class="icon icon-md"></i></div>
             <div class="type-label">Parent</div>
-            <div class="type-desc">Manage & assign work</div>
+            <div class="type-desc">Manage &amp; assign work</div>
           </div>
         </div>
         <input type="hidden" id="reg-account-type" value="student">
@@ -105,7 +107,9 @@
     <!-- Sidebar -->
     <aside class="sidebar">
       <div class="sidebar-logo">
-        <div class="logo-mark">✏️</div>
+        <div class="logo-mark">
+          <i data-lucide="calculator" class="icon"></i>
+        </div>
         <span>PurePain</span>
       </div>
       <div class="sidebar-user">
@@ -115,7 +119,7 @@
       <nav class="sidebar-nav" id="sidebar-nav"></nav>
       <div class="sidebar-footer">
         <button class="nav-item" style="color:var(--danger)" onclick="logout()">
-          <span class="nav-icon">🚪</span> Sign Out
+          <span class="nav-icon"><i data-lucide="log-out" class="icon"></i></span> Sign Out
         </button>
       </div>
     </aside>
@@ -176,8 +180,12 @@
             <p>Create and manage your question bank</p>
           </div>
           <div style="display:flex;gap:8px">
-            <button class="btn btn-outline" style="width:auto" onclick="openGenerateQuestions()">✨ Generate with AI</button>
-            <button class="btn btn-primary" style="width:auto" onclick="openCreateQuestion()">+ New Question</button>
+            <button class="btn btn-outline" style="width:auto" onclick="openGenerateQuestions()">
+              <i data-lucide="sparkles" class="icon"></i> Generate with AI
+            </button>
+            <button class="btn btn-primary" style="width:auto" onclick="openCreateQuestion()">
+              <i data-lucide="plus" class="icon"></i> New Question
+            </button>
           </div>
         </div>
         <div id="my-questions-content"></div>
@@ -202,7 +210,9 @@
   <div class="modal">
     <div class="modal-header">
       <h3>Link a Student</h3>
-      <button class="modal-close" onclick="closeModalById('modal-link-student')">✕</button>
+      <button class="modal-close" onclick="closeModalById('modal-link-student')">
+        <i data-lucide="x" class="icon"></i>
+      </button>
     </div>
     <div class="modal-body">
       <div id="link-error" class="alert alert-error" style="display:none"></div>
@@ -221,13 +231,15 @@
   <div class="modal">
     <div class="modal-header">
       <h3>Create Question</h3>
-      <button class="modal-close" onclick="closeModalById('modal-create-question')">✕</button>
+      <button class="modal-close" onclick="closeModalById('modal-create-question')">
+        <i data-lucide="x" class="icon"></i>
+      </button>
     </div>
     <div class="modal-body">
       <div id="create-q-error" class="alert alert-error" style="display:none"></div>
       <div class="form-group">
         <label>Question type</label>
-        <div style="display:flex;gap:8px">
+        <div style="display:flex;gap:14px">
           <label style="display:flex;align-items:center;gap:6px;font-weight:normal;cursor:pointer">
             <input type="radio" name="q-type" value="multiple_choice" checked onchange="onQTypeChange()"> Multiple Choice
           </label>
@@ -253,7 +265,6 @@
         <input type="text" id="q-answer" placeholder="The correct answer">
       </div>
 
-      <!-- Multiple choice options -->
       <div id="mc-options-section">
         <div class="form-group">
           <label>Answer options</label>
@@ -289,7 +300,9 @@
   <div class="modal">
     <div class="modal-header">
       <h3>Assign Question</h3>
-      <button class="modal-close" onclick="closeModalById('modal-assign')">✕</button>
+      <button class="modal-close" onclick="closeModalById('modal-assign')">
+        <i data-lucide="x" class="icon"></i>
+      </button>
     </div>
     <div class="modal-body">
       <div id="assign-error" class="alert alert-error" style="display:none"></div>
@@ -311,8 +324,10 @@
 <div id="modal-generate-questions" class="modal-backdrop" style="display:none" onclick="closeModal('modal-generate-questions',event)">
   <div class="modal">
     <div class="modal-header">
-      <h3>✨ Generate Questions with AI</h3>
-      <button class="modal-close" onclick="closeModalById('modal-generate-questions')">✕</button>
+      <h3>Generate Questions with AI</h3>
+      <button class="modal-close" onclick="closeModalById('modal-generate-questions')">
+        <i data-lucide="x" class="icon"></i>
+      </button>
     </div>
     <div class="modal-body">
       <div id="generate-error" class="alert alert-error" style="display:none"></div>
@@ -356,12 +371,15 @@
   <div class="modal" style="max-width:600px">
     <div class="modal-header">
       <h3 id="progress-modal-title">Student Progress</h3>
-      <button class="modal-close" onclick="closeModalById('modal-student-progress')">✕</button>
+      <button class="modal-close" onclick="closeModalById('modal-student-progress')">
+        <i data-lucide="x" class="icon"></i>
+      </button>
     </div>
     <div class="modal-body" id="progress-modal-body">Loading…</div>
   </div>
 </div>
 
+<script src="https://unpkg.com/lucide@latest"></script>
 <script src="/js/app.js"></script>
 </body>
 </html>
