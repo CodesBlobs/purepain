@@ -171,8 +171,8 @@ router.post('/assign-batch', async (req, res) => {
   if (!student_id || !Array.isArray(question_ids) || question_ids.length === 0) {
     return res.status(400).json({ error: 'student_id and question_ids array required' });
   }
-  if (question_ids.length > 5) {
-    return res.status(400).json({ error: 'Maximum 5 questions per practice set' });
+  if (question_ids.length > 50) {
+    return res.status(400).json({ error: 'Maximum 50 questions per assignment' });
   }
 
   try {
@@ -243,15 +243,17 @@ router.post('/questions/generate', async (req, res) => {
 
 Mix question types: some as "multiple_choice" (with 4 options A/B/C/D) and some as "word_problem" (open answer).
 
+Use LaTeX for ALL mathematical expressions. Inline math must use $...$ delimiters. Examples: $3 + 4$, $\\frac{1}{2}$, $x^2 + 3x - 10 = 0$, $\\sqrt{25}$.
+
 Return ONLY a valid JSON array, no markdown, no explanation. Each element must have:
 - "type": "multiple_choice" or "word_problem"
 - "difficulty": "easy", "medium", or "hard"
-- "question_text": the question string
-- "answer": the correct answer string (for multiple_choice, match the correct option_text exactly)
-- "options": array of {label, text, is_correct} objects — required for multiple_choice, omit for word_problem
+- "question_text": the question string (use LaTeX for all math)
+- "answer": the correct answer string (plain text or LaTeX if needed; for multiple_choice, match the correct option_text exactly)
+- "options": array of {label, text, is_correct} objects — required for multiple_choice, omit for word_problem (option text may use LaTeX)
 
 Example element:
-{"type":"multiple_choice","difficulty":"easy","question_text":"What is 3 + 4?","answer":"7","options":[{"label":"A","text":"6","is_correct":0},{"label":"B","text":"7","is_correct":1},{"label":"C","text":"8","is_correct":0},{"label":"D","text":"9","is_correct":0}]}
+{"type":"multiple_choice","difficulty":"easy","question_text":"What is $3 + 4$?","answer":"$7$","options":[{"label":"A","text":"$6$","is_correct":0},{"label":"B","text":"$7$","is_correct":1},{"label":"C","text":"$8$","is_correct":0},{"label":"D","text":"$9$","is_correct":0}]}
 
 Cover a wide variety of topics within ${topic}: arithmetic, fractions, geometry, algebra basics, word problems, percentages, ratios, etc. Make sure every question is different and interesting.`;
 

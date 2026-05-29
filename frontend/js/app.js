@@ -38,6 +38,10 @@ async function api(path, opts = {}) {
   return data;
 }
 
+function renderMath(el) {
+  if (window.MathJax?.typesetPromise) MathJax.typesetPromise([el]).catch(() => {});
+}
+
 function timeAgo(dateStr) {
   const diff = (Date.now() - new Date(dateStr)) / 1000;
   if (diff < 60) return 'just now';
@@ -367,6 +371,7 @@ function renderPracticeQuestion() {
     </div>
   `;
   if (!hasOptions) setTimeout(() => document.getElementById('practice-text-answer')?.focus(), 50);
+  renderMath(container);
 }
 
 async function submitPracticeAnswer(chosen) {
@@ -558,7 +563,8 @@ function renderChallengeQuestion() {
   const isLast = challengeState.current === challengeState.total - 1;
   const allAnswered = challengeState.selectedAnswers.every(a => a !== null);
 
-  document.getElementById('challenge-content').innerHTML = `
+  const challengeContentEl = document.getElementById('challenge-content');
+  challengeContentEl.innerHTML = `
     ${buildChallengeProgress()}
     <div class="question-card" style="margin-top:16px">
       <div class="q-content">${q.question_text}</div>
@@ -583,6 +589,7 @@ function renderChallengeQuestion() {
       </div>
     </div>
   `;
+  renderMath(challengeContentEl);
 }
 
 function selectChallengeAnswer(value) {
@@ -731,7 +738,7 @@ async function loadAssignments() {
       return;
     }
 
-    container.innerHTML = assignments.map((a, i) => `
+    container.innerHTML = assignments.map(a => `
       <div class="question-card" id="assign-${a.id}" style="margin-bottom:16px">
         <div class="assigned-tag">📤 Assigned by ${a.parent_name}${a.due_date ? ` · Due ${a.due_date}` : ''}</div>
         <div style="margin-bottom:8px">
@@ -750,12 +757,13 @@ async function loadAssignments() {
         ` : `
           <div class="word-answer-area">
             <input type="text" id="ans-${a.id}" placeholder="Type your answer…" style="margin-bottom:10px">
-            <button class="btn btn-primary" style="width:auto" onclick="submitAssignmentWord(${a.id}, ${i}, ${a.question_id})">Submit Answer</button>
+            <button class="btn btn-primary" style="width:auto" onclick="submitAssignmentWord(${a.id}, ${a.question_id})">Submit Answer</button>
           </div>
         `}
         <div id="aresult-${a.id}" style="display:none"></div>
       </div>
     `).join('');
+    renderMath(container);
   } catch (err) {
     container.innerHTML = `<div class="alert alert-error">${err.message}</div>`;
   }
@@ -790,7 +798,7 @@ async function submitAssignment(assignmentId, questionId, chosen) {
   }
 }
 
-async function submitAssignmentWord(assignmentId, idx, questionId) {
+async function submitAssignmentWord(assignmentId, questionId) {
   const input = document.getElementById('ans-' + assignmentId);
   const answer = input.value.trim();
   if (!answer) return;
@@ -1074,10 +1082,11 @@ async function loadAssignPage() {
             ${data.students.map(s => `<option value="${s.id}">${s.name}</option>`).join('')}
           </select>
         </div>
+        <button class="btn btn-outline btn-sm" id="select-all-btn" onclick="selectAllAssign()" style="padding-bottom:6px;padding-top:6px">Select All</button>
         <div style="padding-bottom:2px">
-          <span id="assign-selection-count" style="color:var(--gray-500);font-size:14px">0 / 5 selected</span>
+          <span id="assign-selection-count" style="color:var(--gray-500);font-size:14px">0 selected</span>
         </div>
-        <button id="assign-set-btn" class="btn btn-primary" style="width:auto;opacity:0.4;cursor:not-allowed" disabled onclick="submitAssignSet()">Assign Practice Set</button>
+        <button id="assign-set-btn" class="btn btn-primary" style="width:auto;opacity:0.4;cursor:not-allowed" disabled onclick="submitAssignSet()">Assign Selected</button>
         <div id="assign-set-success" class="alert alert-success" style="display:none;margin:0"></div>
       </div>
       <div class="questions-list" id="assign-questions-list">
@@ -1100,22 +1109,31 @@ async function loadAssignPage() {
 
 function toggleAssignCheck(id) {
   const cb = document.getElementById('assign-check-' + id);
-  const checked = document.querySelectorAll('#assign-questions-list input[type=checkbox]:checked');
-  if (!cb.checked && checked.length >= 5) return;
   cb.checked = !cb.checked;
+  updateAssignSetButton();
+}
+
+function selectAllAssign() {
+  const checkboxes = [...document.querySelectorAll('#assign-questions-list input[type=checkbox]')];
+  const allChecked = checkboxes.every(cb => cb.checked);
+  checkboxes.forEach(cb => { cb.checked = !allChecked; });
   updateAssignSetButton();
 }
 
 function updateAssignSetButton() {
   const checked = document.querySelectorAll('#assign-questions-list input[type=checkbox]:checked');
+  const all = document.querySelectorAll('#assign-questions-list input[type=checkbox]');
   const btn = document.getElementById('assign-set-btn');
   const counter = document.getElementById('assign-selection-count');
-  if (counter) counter.textContent = `${checked.length} / 5 selected`;
+  const selAllBtn = document.getElementById('select-all-btn');
+  if (counter) counter.textContent = `${checked.length} selected`;
+  if (selAllBtn) selAllBtn.textContent = checked.length === all.length && all.length > 0 ? 'Deselect All' : 'Select All';
   if (btn) {
     const disabled = checked.length === 0;
     btn.disabled = disabled;
     btn.style.opacity = disabled ? '0.4' : '1';
     btn.style.cursor = disabled ? 'not-allowed' : 'pointer';
+    btn.textContent = checked.length > 0 ? `Assign ${checked.length} Question${checked.length > 1 ? 's' : ''}` : 'Assign Selected';
   }
 }
 
