@@ -255,7 +255,9 @@ Return ONLY a valid JSON array, no markdown, no explanation. Each element must h
 Example element:
 {"type":"multiple_choice","difficulty":"easy","question_text":"What is $3 + 4$?","answer":"$7$","options":[{"label":"A","text":"$6$","is_correct":0},{"label":"B","text":"$7$","is_correct":1},{"label":"C","text":"$8$","is_correct":0},{"label":"D","text":"$9$","is_correct":0}]}
 
-Cover a wide variety of topics within ${topic}: arithmetic, fractions, geometry, algebra basics, word problems, percentages, ratios, etc. Make sure every question is different and interesting.`;
+Cover a wide variety of topics within ${topic}: arithmetic, fractions, geometry, algebra basics, word problems, percentages, ratios, etc. Make sure every question is different and interesting.
+
+IMPORTANT: For word_problem questions, the answer must be a plain number only — do NOT include units (e.g. answer "12" not "12 apples", "3.5" not "3.5 km"). Students will be told that units don't matter.`;
 
   try {
     const aiRes = await fetch(process.env.AI_ENDPOINT, {

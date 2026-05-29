@@ -206,15 +206,15 @@ export default function PracticePage() {
               )}
 
               {!result && !hasOptions && (
-                <div className="flex gap-2">
+                <div className="space-y-2">
                   <Input
                     value={textInput}
                     onChange={(e) => setTextInput(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && handleSubmit()}
                     placeholder="Your answer…"
-                    className="flex-1"
                     autoFocus
                   />
+                  <p className="text-xs text-muted-foreground">Just enter the number — units don&apos;t matter.</p>
                 </div>
               )}
 

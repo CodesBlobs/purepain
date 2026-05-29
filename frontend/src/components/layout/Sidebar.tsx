@@ -11,6 +11,7 @@ import {
   Send,
   LayoutDashboard,
   LogOut,
+  CheckSquare,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useAuthStore } from '@/store/auth'
@@ -22,6 +23,7 @@ const studentNav = [
   { href: '/student/practice', label: 'Practice', icon: Calculator },
   { href: '/student/challenge', label: 'Challenge', icon: Trophy },
   { href: '/student/assignments', label: 'Assignments', icon: ClipboardList },
+  { href: '/student/completed', label: 'Completed Work', icon: CheckSquare },
 ]
 
 const parentNav = [

@@ -233,7 +233,7 @@ export default function ChallengePage() {
 
         <Button variant="outline" className="w-full gap-2" onClick={handleReset}>
           <RotateCcw className="w-4 h-4" />
-          Try Again
+          New Challenge
         </Button>
       </div>
     )

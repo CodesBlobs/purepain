@@ -197,4 +197,27 @@ router.post('/submit', async (req, res) => {
   }
 });
 
+router.get('/assignments-overview', async (req, res) => {
+  try {
+    const rows = await db.all(`
+      SELECT a.id, a.status, a.assigned_at,
+        q.id as question_id, q.question_text, q.type, q.difficulty,
+        u.name as parent_name,
+        att.is_correct, att.answer_given, att.attempted_at
+      FROM assignments a
+      JOIN questions q ON q.id = a.question_id
+      JOIN users u ON u.id = a.parent_id
+      LEFT JOIN attempts att ON att.assignment_id = a.id AND att.student_id = $1
+      WHERE a.student_id = $1
+      ORDER BY a.assigned_at DESC
+    `, [req.user.id]);
+
+    const pending = rows.filter(r => r.status === 'pending');
+    const completed = rows.filter(r => r.status === 'completed');
+    res.json({ pending, completed });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to load assignments overview' });
+  }
+});
+
 module.exports = router;

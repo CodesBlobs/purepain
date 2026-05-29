@@ -119,12 +119,15 @@ function AssignmentItem({ assignment: a }: AssignmentItemProps) {
                 ))}
               </div>
             ) : (
-              <Input
-                value={textInput}
-                onChange={(e) => setTextInput(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && handleSubmit()}
-                placeholder="Your answer…"
-              />
+              <div className="space-y-1">
+                <Input
+                  value={textInput}
+                  onChange={(e) => setTextInput(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleSubmit()}
+                  placeholder="Your answer…"
+                />
+                <p className="text-xs text-muted-foreground">Just enter the number — units don&apos;t matter.</p>
+              </div>
             )}
 
             <Button
