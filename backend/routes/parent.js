@@ -270,7 +270,7 @@ Cover a wide variety of topics within ${topic}: arithmetic, fractions, geometry,
     });
     if (!aiRes.ok) throw new Error(`AI API error: ${aiRes.status}`);
     const aiData = await aiRes.json();
-    const raw = (aiData.message?.content || '').trim();
+    const raw = (aiData.choices?.[0]?.message?.content || '').trim();
     const questions = JSON.parse(raw);
 
     if (!Array.isArray(questions)) throw new Error('Expected JSON array');
