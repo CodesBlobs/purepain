@@ -71,7 +71,7 @@ export default function LandingPage() {
             <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-indigo-700 flex items-center justify-center shadow-sm shadow-primary/40">
               <Calculator className="w-4 h-4 text-white" />
             </div>
-            <span className="text-lg font-black tracking-tight">PurePain</span>
+            <span className="text-lg font-black tracking-tight">StudyOcean</span>
           </div>
           <div className="flex items-center gap-3">
             <Link href="/auth">
@@ -99,16 +99,15 @@ export default function LandingPage() {
           </div>
 
           <h1 className="text-5xl sm:text-6xl md:text-7xl font-black tracking-tight leading-[1.05] mb-6">
-            Math practice that{' '}
+            Master math with{' '}
             <span className="bg-gradient-to-r from-primary to-indigo-500 bg-clip-text text-transparent">
-              actually hurts
+              AI-powered learning
             </span>
-            {' '}(in a good way)
           </h1>
 
           <p className="text-lg sm:text-xl text-muted-foreground max-w-2xl mx-auto mb-10 leading-relaxed">
-            PurePain delivers unlimited AI-generated maths problems tailored to your grade level.
-            Build fluency, track progress, and conquer exams — one painful problem at a time.
+            StudyOcean delivers unlimited AI-generated maths problems tailored to your grade level.
+            Build fluency, track progress, and conquer exams with adaptive learning.
           </p>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
@@ -237,10 +236,10 @@ export default function LandingPage() {
             <div className="w-6 h-6 rounded-md bg-gradient-to-br from-primary to-indigo-700 flex items-center justify-center">
               <Calculator className="w-3 h-3 text-white" />
             </div>
-            <span className="font-bold text-foreground">PurePain</span>
-            <span>· Math practice that actually works</span>
+            <span className="font-bold text-foreground">StudyOcean</span>
+            <span>· AI-Powered Math Learning</span>
           </div>
-          <span>© {new Date().getFullYear()} PurePain. All rights reserved.</span>
+          <span>© {new Date().getFullYear()} StudyOcean. All rights reserved.</span>
         </div>
       </footer>
     </div>

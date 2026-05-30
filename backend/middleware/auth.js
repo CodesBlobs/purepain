@@ -1,6 +1,6 @@
 const jwt = require('jsonwebtoken');
 
-const JWT_SECRET = process.env.JWT_SECRET || 'purepain-dev-secret-change-in-prod';
+const JWT_SECRET = process.env.JWT_SECRET || 'studyocean-dev-secret-change-in-prod';
 
 function requireAuth(req, res, next) {
   const header = req.headers.authorization;

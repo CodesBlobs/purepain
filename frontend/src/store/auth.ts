@@ -19,6 +19,6 @@ export const useAuthStore = create<AuthState>()(
       setAuth: (user, token) => set({ user, token }),
       logout: () => set({ user: null, token: null }),
     }),
-    { name: 'purepain-auth' }
+    { name: 'studyocean-auth' }
   )
 )

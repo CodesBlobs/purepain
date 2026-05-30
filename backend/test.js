@@ -13,7 +13,7 @@ const DIM   = '\x1b[2m';
 const YELLOW = '\x1b[33m';
 
 async function main() {
-  console.log(`\n${BOLD}PurePain Integration Tests${RESET}`);
+  console.log(`\n${BOLD}StudyOcean Integration Tests${RESET}`);
   console.log(`${DIM}Target: ${BASE}${RESET}\n`);
 
   // Health check first

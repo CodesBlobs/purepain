@@ -4,8 +4,8 @@ import './globals.css'
 import { Providers } from './providers'
 
 export const metadata: Metadata = {
-  title: 'PurePain — Math Practice',
-  description: 'Math practice that actually works',
+  title: 'StudyOcean — AI-Powered Math Learning',
+  description: 'Unlimited AI-generated math problems for students and families',
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

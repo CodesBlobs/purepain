@@ -18,7 +18,7 @@ const PORT = process.env.PORT || 3001;
 initialize()
   .then(() => {
     app.listen(PORT, () => {
-      console.log(`PurePain server running on http://localhost:${PORT}`);
+      console.log(`StudyOcean server running on http://localhost:${PORT}`);
     });
   })
   .catch(err => {

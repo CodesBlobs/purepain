@@ -83,8 +83,8 @@ function AuthForm() {
           <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-primary to-indigo-700 flex items-center justify-center mx-auto mb-4 shadow-lg shadow-primary/40">
             <Calculator className="w-8 h-8 text-white" />
           </div>
-          <h1 className="text-3xl font-black tracking-tight text-foreground">PurePain</h1>
-          <p className="text-sm text-muted-foreground mt-1 font-medium">Math practice that actually works</p>
+          <h1 className="text-3xl font-black tracking-tight text-foreground">StudyOcean</h1>
+          <p className="text-sm text-muted-foreground mt-1 font-medium">AI-Powered Math Learning</p>
         </div>
 
         <Tabs defaultValue={initialTab}>

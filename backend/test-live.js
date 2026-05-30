@@ -23,7 +23,7 @@ async function req(method, path, body, token) {
 }
 
 async function main() {
-  console.log(`\n${B}PurePain Integration Tests${X}`);
+  console.log(`\n${B}StudyOcean Integration Tests${X}`);
   console.log(`${D}Target: ${BASE}${X}\n`);
 
   // Health check

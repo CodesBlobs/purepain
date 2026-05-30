@@ -53,7 +53,7 @@ export function Sidebar() {
         <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-indigo-700 flex items-center justify-center shadow-md shadow-primary/30">
           <Calculator className="w-4 h-4 text-white" />
         </div>
-        <span className="text-[17px] font-black tracking-tight text-foreground">PurePain</span>
+        <span className="text-[17px] font-black tracking-tight text-foreground">StudyOcean</span>
       </div>
 
       {/* User */}
