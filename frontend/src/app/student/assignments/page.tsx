@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { CheckCircle2, XCircle, ChevronRight, Sparkles } from 'lucide-react'
@@ -86,6 +86,19 @@ export default function AssignmentsPage() {
   const [generating, setGenerating] = useState(false)
   const [assignedCount, setAssignedCount] = useState(0)
 
+  // Refs so async callbacks always see the latest values, never stale closures
+  const questionsRef = useRef<PracticeQuestion[]>([])
+  const indexRef = useRef(0)
+  const assignedCountRef = useRef(0)
+  const batchCorrectRef = useRef<Record<number, number>>({})
+  const generatingRef = useRef(false)
+
+  useEffect(() => { questionsRef.current = questions }, [questions])
+  useEffect(() => { indexRef.current = index }, [index])
+  useEffect(() => { assignedCountRef.current = assignedCount }, [assignedCount])
+  useEffect(() => { batchCorrectRef.current = batchCorrect }, [batchCorrect])
+  useEffect(() => { generatingRef.current = generating }, [generating])
+
   const { data, isLoading } = useQuery<{ assignments: Assignment[] }>({
     queryKey: ['student-assignments'],
     queryFn: async () => {
@@ -95,31 +108,33 @@ export default function AssignmentsPage() {
   })
 
   useEffect(() => {
-    if (data?.assignments && questions.length === 0) {
+    if (data?.assignments && questionsRef.current.length === 0) {
       const qs = data.assignments.map(fromAssignment)
       setQuestions(qs)
       setAssignedCount(qs.length)
     }
-  }, [data, questions.length])
+  }, [data])
 
   const q = questions[index]
   const total = questions.length
   const hasOptions = (q?.options?.length ?? 0) > 0
-  const isLastAssigned = index === assignedCount - 1
 
-  const generateMore = useCallback(async (batchQ: PracticeQuestion) => {
+  async function generateMore(batchQ: PracticeQuestion) {
+    if (generatingRef.current) return
     setGenerating(true)
+    generatingRef.current = true
     try {
-      const examples = data?.assignments
-        .filter(a => a.batch_id === batchQ.batch_id)
-        .map(a => ({ question_text: a.question_text, type: a.type, difficulty: a.difficulty })) ?? []
+      // Build examples from the stable questions ref — never stale, never empty from a refetch
+      const examples = questionsRef.current
+        .filter(pq => !pq.is_generated && pq.batch_id === batchQ.batch_id)
+        .map(pq => ({ question_text: pq.question_text, type: pq.type, difficulty: pq.difficulty }))
 
       const res = await api.post<{ questions: Omit<PracticeQuestion, 'id' | 'question_id' | 'parent_name' | 'is_generated'>[] }>(
         '/student/generate-practice',
         { examples, count: 5 }
       )
 
-      const generated: PracticeQuestion[] = res.questions.map(q => ({
+      const generated: PracticeQuestion[] = (res.questions ?? []).map(q => ({
         ...q,
         id: null,
         question_id: null,
@@ -129,13 +144,16 @@ export default function AssignmentsPage() {
         is_generated: true,
       }))
 
-      setQuestions(prev => [...prev, ...generated])
+      if (generated.length > 0) {
+        setQuestions(prev => [...prev, ...generated])
+      }
     } catch {
-      // generation failed — student will see "all done" after current questions
+      // silent — student sees "all done" if this fails
     } finally {
       setGenerating(false)
+      generatingRef.current = false
     }
-  }, [data?.assignments])
+  }
 
   const submitMutation = useMutation({
     mutationFn: (answer_given: string) => {
@@ -154,26 +172,38 @@ export default function AssignmentsPage() {
         answer_given,
       })
     },
-    onSuccess: (data) => {
-      setResult(data)
+    onSuccess: (submitResult) => {
+      setResult(submitResult)
 
-      let newBatchCorrect = batchCorrect
-      if (data.is_correct && q.batch_id != null && q.batch_correct_required != null) {
-        const prev = batchCorrect[q.batch_id] ?? 0
-        const next = prev + 1
-        newBatchCorrect = { ...batchCorrect, [q.batch_id]: next }
-        setBatchCorrect(newBatchCorrect)
-        if (next >= q.batch_correct_required) {
+      // Always read from refs — these are guaranteed current even in async callbacks
+      const currentIndex = indexRef.current
+      const currentAssignedCount = assignedCountRef.current
+      const currentBatchCorrect = { ...batchCorrectRef.current }
+      const currentQ = questionsRef.current[currentIndex]
+
+      if (!currentQ) return
+
+      // Update batch correct count
+      if (submitResult.is_correct && currentQ.batch_id != null && currentQ.batch_correct_required != null) {
+        const next = (currentBatchCorrect[currentQ.batch_id] ?? 0) + 1
+        currentBatchCorrect[currentQ.batch_id] = next
+        setBatchCorrect({ ...currentBatchCorrect })
+
+        if (next >= currentQ.batch_correct_required) {
           setQuitting(true)
+          qc.invalidateQueries({ queryKey: ['student-dashboard'] })
+          qc.invalidateQueries({ queryKey: ['student-assignments'] })
           return
         }
       }
 
-      // Last assigned question and batch target not met — generate more in the background
-      if (isLastAssigned && !generating && q.batch_id != null) {
-        const remaining = (q.batch_correct_required ?? 0) - (newBatchCorrect[q.batch_id] ?? 0)
-        if (remaining > 0) {
-          generateMore(q)
+      // Last assigned question — check if bonus questions are needed
+      const isLast = currentIndex === currentAssignedCount - 1
+      if (isLast && currentQ.batch_id != null && currentQ.batch_correct_required != null) {
+        const correct = currentBatchCorrect[currentQ.batch_id] ?? 0
+        const needed = currentQ.batch_correct_required - correct
+        if (needed > 0) {
+          generateMore(currentQ)
         }
       }
 
@@ -219,7 +249,7 @@ export default function AssignmentsPage() {
     )
   }
 
-  // Waiting for generated questions to load
+  // Waiting for bonus questions while on the last assigned question's result screen
   if (index >= total && generating) {
     return (
       <div className="flex flex-col items-center justify-center h-64 gap-4">
@@ -229,7 +259,6 @@ export default function AssignmentsPage() {
     )
   }
 
-  // Generated questions exhausted too (shouldn't normally happen)
   if (index >= total) {
     return (
       <div className="max-w-md mx-auto text-center space-y-4 pt-16">
@@ -242,11 +271,11 @@ export default function AssignmentsPage() {
     )
   }
 
+  const isLastAssigned = index === assignedCount - 1
   const progress = (index / Math.max(total, assignedCount)) * 100
   const batchTarget = q.batch_id != null && q.batch_correct_required != null
     ? { required: q.batch_correct_required, correct: batchCorrect[q.batch_id] ?? 0 }
     : null
-
   const nextButtonBlocked = isLastAssigned && result != null && generating
 
   return (
