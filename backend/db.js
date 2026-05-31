@@ -77,7 +77,17 @@ async function initialize() {
   `);
 
   await pool.query(`
-    ALTER TABLE parent_student_links ADD COLUMN IF NOT EXISTS correct_required INTEGER NOT NULL DEFAULT 0;
+    CREATE TABLE IF NOT EXISTS assignment_batches (
+      id SERIAL PRIMARY KEY,
+      parent_id INTEGER NOT NULL REFERENCES users(id),
+      student_id INTEGER NOT NULL REFERENCES users(id),
+      correct_required INTEGER NOT NULL DEFAULT 1,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+  `);
+
+  await pool.query(`
+    ALTER TABLE assignments ADD COLUMN IF NOT EXISTS batch_id INTEGER REFERENCES assignment_batches(id);
   `);
 }
 

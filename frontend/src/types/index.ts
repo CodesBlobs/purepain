@@ -35,6 +35,8 @@ export interface Assignment {
   due_date?: string
   assigned_at: string
   parent_name: string
+  batch_id?: number | null
+  batch_correct_required?: number | null
   options?: QuestionOption[]
 }
 
@@ -56,7 +58,6 @@ export interface StudentCard {
   id: number
   name: string
   email: string
-  correct_required: number
   pending_count: number
   completed_count: number
   total_attempts: number

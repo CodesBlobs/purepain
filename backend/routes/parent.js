@@ -9,7 +9,6 @@ router.get('/dashboard', async (req, res) => {
   try {
     const students = await db.all(`
       SELECT u.id, u.name, u.email, u.grade_level,
-        psl.correct_required,
         (SELECT COUNT(*) FROM assignments a WHERE a.student_id = u.id AND a.parent_id = $1 AND a.status = 'pending')::int as pending_count,
         (SELECT COUNT(*) FROM assignments a WHERE a.student_id = u.id AND a.parent_id = $2 AND a.status = 'completed')::int as completed_count,
         (SELECT COUNT(*) FROM attempts att WHERE att.student_id = u.id AND att.is_correct = 1)::int as correct_count,
@@ -189,7 +188,7 @@ router.post('/assign', async (req, res) => {
 });
 
 router.post('/assign-batch', async (req, res) => {
-  const { student_id, question_ids, due_date } = req.body;
+  const { student_id, question_ids, due_date, correct_required } = req.body;
   if (!student_id || !Array.isArray(question_ids) || question_ids.length === 0) {
     return res.status(400).json({ error: 'student_id and question_ids array required' });
   }
@@ -197,12 +196,20 @@ router.post('/assign-batch', async (req, res) => {
     return res.status(400).json({ error: 'Maximum 50 questions per assignment' });
   }
 
+  const target = Math.max(1, Math.min(parseInt(correct_required) || question_ids.length, question_ids.length));
+
   try {
     const linked = await db.get(
       'SELECT id FROM parent_student_links WHERE parent_id = $1 AND student_id = $2',
       [req.user.id, student_id]
     );
     if (!linked) return res.status(403).json({ error: 'Student not linked to your account' });
+
+    const batchResult = await db.run(
+      'INSERT INTO assignment_batches (parent_id, student_id, correct_required) VALUES ($1, $2, $3) RETURNING id',
+      [req.user.id, student_id, target]
+    );
+    const batchId = batchResult.rows[0].id;
 
     const ids = [];
     for (const qid of question_ids) {
@@ -212,8 +219,8 @@ router.post('/assign-batch', async (req, res) => {
       );
       if (!owns) continue;
       const result = await db.run(
-        'INSERT INTO assignments (parent_id, student_id, question_id, due_date) VALUES ($1, $2, $3, $4) RETURNING id',
-        [req.user.id, student_id, qid, due_date || null]
+        'INSERT INTO assignments (parent_id, student_id, question_id, due_date, batch_id) VALUES ($1, $2, $3, $4, $5) RETURNING id',
+        [req.user.id, student_id, qid, due_date || null, batchId]
       );
       ids.push(result.rows[0].id);
     }

@@ -24,6 +24,7 @@ export default function AssignPage() {
   const [selectedStudent, setSelectedStudent] = useState<string>('')
   const [selectedQuestions, setSelectedQuestions] = useState<Set<number>>(new Set())
   const [dueDate, setDueDate] = useState('')
+  const [correctRequired, setCorrectRequired] = useState<string>('1')
   const [successMsg, setSuccessMsg] = useState('')
   const [errorMsg, setErrorMsg] = useState('')
 
@@ -43,10 +44,12 @@ export default function AssignPage() {
         student_id: parseInt(selectedStudent),
         question_ids: Array.from(selectedQuestions),
         due_date: dueDate || null,
+        correct_required: parseInt(correctRequired) || selectedQuestions.size,
       }),
     onSuccess: (data) => {
       setSuccessMsg(`${data.assigned} question${data.assigned !== 1 ? 's' : ''} assigned successfully!`)
       setSelectedQuestions(new Set())
+      setCorrectRequired('1')
       setErrorMsg('')
       qc.invalidateQueries({ queryKey: ['parent-dashboard'] })
     },
@@ -143,6 +146,25 @@ export default function AssignPage() {
                   type="date"
                   value={dueDate}
                   onChange={(e) => setDueDate(e.target.value)}
+                />
+              </div>
+              <div className="space-y-1.5 sm:col-span-2">
+                <Label>
+                  Correct answers to close SEB
+                  {selectedQuestions.size > 0 && (
+                    <span className="text-muted-foreground font-normal ml-1">
+                      (out of {selectedQuestions.size} selected)
+                    </span>
+                  )}
+                </Label>
+                <Input
+                  type="number"
+                  min={1}
+                  max={selectedQuestions.size || undefined}
+                  value={correctRequired}
+                  onChange={(e) => setCorrectRequired(e.target.value)}
+                  placeholder="e.g. 3"
+                  className="w-32"
                 />
               </div>
             </CardContent>

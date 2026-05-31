@@ -59,12 +59,14 @@ function generateMathQuestion(difficulty) {
 router.get('/dashboard', async (req, res) => {
   try {
     const assignments = await db.all(`
-      SELECT a.id, a.status, a.due_date, a.assigned_at,
+      SELECT a.id, a.status, a.due_date, a.assigned_at, a.batch_id,
         q.id as question_id, q.question_text, q.type, q.difficulty, q.answer,
-        u.name as parent_name
+        u.name as parent_name,
+        ab.correct_required as batch_correct_required
       FROM assignments a
       JOIN questions q ON q.id = a.question_id
       JOIN users u ON u.id = a.parent_id
+      LEFT JOIN assignment_batches ab ON ab.id = a.batch_id
       WHERE a.student_id = $1 AND a.status = 'pending'
       ORDER BY a.assigned_at DESC
     `, [req.user.id]);
@@ -92,12 +94,7 @@ router.get('/dashboard', async (req, res) => {
       WHERE psl.student_id = $1
     `, [req.user.id]);
 
-    const targetRow = await db.get(`
-      SELECT COALESCE(MAX(correct_required), 0) as correct_required
-      FROM parent_student_links WHERE student_id = $1
-    `, [req.user.id]);
-
-    res.json({ assignments: assignmentsWithOptions, stats, recentAttempts, parents, correctRequired: targetRow?.correct_required ?? 0 });
+    res.json({ assignments: assignmentsWithOptions, stats, recentAttempts, parents });
   } catch (err) {
     res.status(500).json({ error: 'Failed to load dashboard' });
   }

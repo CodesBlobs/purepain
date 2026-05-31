@@ -19,14 +19,6 @@ interface SubmitResult {
   correct_answer: string
 }
 
-interface DashboardData {
-  assignments: Assignment[]
-  correctRequired: number
-  stats: unknown
-  recentAttempts: unknown[]
-  parents: unknown[]
-}
-
 function QuitCountdown({ onDone }: { onDone: () => void }) {
   const [count, setCount] = useState(5)
 
@@ -57,16 +49,18 @@ export default function AssignmentsPage() {
   const [selected, setSelected] = useState<string | null>(null)
   const [textInput, setTextInput] = useState('')
   const [result, setResult] = useState<SubmitResult | null>(null)
-  const [sessionCorrect, setSessionCorrect] = useState(0)
+  const [batchCorrect, setBatchCorrect] = useState<Record<number, number>>({})
   const [quitting, setQuitting] = useState(false)
 
-  const { data, isLoading } = useQuery<DashboardData>({
+  const { data, isLoading } = useQuery<{ assignments: Assignment[] }>({
     queryKey: ['student-assignments'],
-    queryFn: () => api.get<DashboardData>('/student/dashboard'),
+    queryFn: async () => {
+      const dash = await api.get<{ assignments: Assignment[]; stats: unknown; recentAttempts: unknown[]; parents: unknown[] }>('/student/dashboard')
+      return { assignments: dash.assignments }
+    },
   })
 
   const assignments = data?.assignments ?? []
-  const correctRequired = data?.correctRequired ?? 0
   const total = assignments.length
   const a = assignments[index]
   const hasOptions = (a?.options?.length ?? 0) > 0
@@ -80,10 +74,11 @@ export default function AssignmentsPage() {
       }),
     onSuccess: (data) => {
       setResult(data)
-      if (data.is_correct) {
-        const newCount = sessionCorrect + 1
-        setSessionCorrect(newCount)
-        if (correctRequired > 0 && newCount >= correctRequired) {
+      if (data.is_correct && a.batch_id != null && a.batch_correct_required != null) {
+        const prev = batchCorrect[a.batch_id] ?? 0
+        const next = prev + 1
+        setBatchCorrect(bc => ({ ...bc, [a.batch_id!]: next }))
+        if (next >= a.batch_correct_required) {
           setQuitting(true)
         }
       }
@@ -131,15 +126,19 @@ export default function AssignmentsPage() {
 
   const progress = (index / total) * 100
 
+  const batchTarget = a.batch_id != null && a.batch_correct_required != null
+    ? { id: a.batch_id, required: a.batch_correct_required, correct: batchCorrect[a.batch_id] ?? 0 }
+    : null
+
   return (
     <div className="max-w-2xl mx-auto space-y-5">
       <div className="space-y-2">
         <div className="flex items-center justify-between text-sm">
           <span className="font-black text-lg text-foreground">Assignments</span>
           <div className="flex items-center gap-3">
-            {correctRequired > 0 && (
+            {batchTarget && (
               <span className="text-xs text-muted-foreground">
-                {sessionCorrect}/{correctRequired} correct
+                {batchTarget.correct}/{batchTarget.required} correct
               </span>
             )}
             <span className="text-muted-foreground">{index + 1} of {total}</span>
