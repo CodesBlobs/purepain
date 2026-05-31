@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { Trophy, Zap, ChevronLeft, ChevronRight, CheckCircle2, XCircle, RotateCcw } from 'lucide-react'
 import { api } from '@/lib/api'
@@ -28,6 +29,7 @@ interface PendingAssignment {
 }
 
 export default function ChallengePage() {
+  const router = useRouter()
   const qc = useQueryClient()
   const store = useChallengeStore()
   const [starting, setStarting] = useState(false)
@@ -104,6 +106,10 @@ export default function ChallengePage() {
     onSuccess: (results) => {
       store.finish(results)
       qc.invalidateQueries({ queryKey: ['student-dashboard'] })
+      const score = results.filter((r) => r.is_correct).length
+      if (score === store.total) {
+        router.push('/student/challenge/perfect')
+      }
     },
   })
 
