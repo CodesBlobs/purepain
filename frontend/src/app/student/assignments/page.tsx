@@ -224,7 +224,7 @@ export default function AssignmentsPage() {
     return (
       <div className="flex flex-col items-center justify-center h-64 gap-4">
         <Sparkles className="w-8 h-8 text-primary animate-pulse" />
-        <p className="text-muted-foreground">Generating more practice questions…</p>
+        <p className="text-muted-foreground">Generating bonus questions…</p>
       </div>
     )
   }
@@ -261,8 +261,8 @@ export default function AssignmentsPage() {
               </span>
             )}
             {q.is_generated && (
-              <Badge variant="secondary" className="text-xs gap-1">
-                <Sparkles className="w-3 h-3" /> Practice
+              <Badge className="text-xs gap-1 bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-500/30">
+                <Sparkles className="w-3 h-3" /> Bonus Question
               </Badge>
             )}
             <span className="text-muted-foreground">{index + 1} of {total}</span>
@@ -277,6 +277,15 @@ export default function AssignmentsPage() {
             <Badge variant={q.difficulty as Difficulty}>{capitalize(q.difficulty)}</Badge>
             <Badge variant="outline" className="text-xs capitalize">{q.type.replace('_', ' ')}</Badge>
           </div>
+
+          {q.is_generated && (
+            <div className="flex items-start gap-2 px-3 py-2.5 rounded-xl bg-amber-500/10 border border-amber-500/25 text-amber-700 dark:text-amber-400">
+              <Sparkles className="w-4 h-4 flex-shrink-0 mt-0.5" />
+              <p className="text-xs font-medium">
+                This is a bonus question — not from your assignment. Keep going to hit your goal!
+              </p>
+            </div>
+          )}
 
           <p className="text-sm font-semibold leading-relaxed">
             <MathText>{q.question_text}</MathText>
@@ -314,7 +323,7 @@ export default function AssignmentsPage() {
                 {nextButtonBlocked ? (
                   <>
                     <Sparkles className="w-4 h-4 animate-pulse" />
-                    Generating practice questions…
+                    Generating bonus questions…
                   </>
                 ) : index + 1 < total ? (
                   <>Next <ChevronRight className="w-4 h-4" /></>
