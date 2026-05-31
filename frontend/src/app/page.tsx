@@ -1,3 +1,7 @@
+'use client'
+
+import { useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import {
   Calculator,
@@ -11,6 +15,7 @@ import {
   Target,
   Trophy,
 } from 'lucide-react'
+import { useAuthStore } from '@/store/auth'
 import { Button } from '@/components/ui/button'
 
 const features = [
@@ -62,6 +67,15 @@ const checkpoints = [
 ]
 
 export default function LandingPage() {
+  const router = useRouter()
+  const { user } = useAuthStore()
+
+  useEffect(() => {
+    if (user) {
+      router.replace(user.account_type === 'student' ? '/student/home' : '/parent/home')
+    }
+  }, [user, router])
+
   return (
     <div className="min-h-screen bg-background text-foreground">
       {/* Nav */}
