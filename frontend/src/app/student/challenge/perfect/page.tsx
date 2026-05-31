@@ -1,6 +1,5 @@
 'use client'
 
-import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Trophy, Star, RotateCcw, Home, CheckCircle2 } from 'lucide-react'
 import { useChallengeStore } from '@/store/challenge'
@@ -13,18 +12,21 @@ export default function PerfectScorePage() {
   const router = useRouter()
   const store = useChallengeStore()
 
-  useEffect(() => {
-    if (!store.completed || store.score !== store.total) {
-      router.replace('/student/challenge')
-    }
-  }, [store.completed, store.score, store.total, router])
-
   function handleNewChallenge() {
     store.reset()
     router.push('/student/challenge')
   }
 
-  if (!store.completed || store.score !== store.total) return null
+  if (!store.completed || store.score !== store.total) {
+    return (
+      <div className="max-w-lg mx-auto text-center space-y-4 pt-24">
+        <div className="w-16 h-16 rounded-2xl bg-emerald-500/10 flex items-center justify-center mx-auto">
+          <Trophy className="w-8 h-8 text-emerald-500" />
+        </div>
+        <h1 className="text-2xl font-black">You have accomplished your goal, or you have finished your assignment.</h1>
+      </div>
+    )
+  }
 
   return (
     <div className="max-w-lg mx-auto space-y-6">

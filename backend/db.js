@@ -75,6 +75,10 @@ async function initialize() {
       attempted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
   `);
+
+  await pool.query(`
+    ALTER TABLE parent_student_links ADD COLUMN IF NOT EXISTS correct_required INTEGER NOT NULL DEFAULT 0;
+  `);
 }
 
 module.exports = { pool, get, all, run, initialize };

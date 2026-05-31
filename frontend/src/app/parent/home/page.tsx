@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Users, TrendingUp, CheckCircle2, ClipboardList, UserPlus, Trash2 } from 'lucide-react'
+import { Users, TrendingUp, CheckCircle2, ClipboardList, UserPlus, Trash2, Target } from 'lucide-react'
 import { api } from '@/lib/api'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -15,6 +15,54 @@ import type { StudentCard } from '@/types'
 interface DashboardData {
   students: StudentCard[]
   my_questions: unknown[]
+}
+
+function StudentTargetInput({ student }: { student: StudentCard }) {
+  const qc = useQueryClient()
+  const [value, setValue] = useState(String(student.correct_required))
+
+  const mutation = useMutation({
+    mutationFn: (n: number) =>
+      api.put(`/parent/student/${student.id}/target`, { correct_required: n }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['parent-dashboard'] }),
+  })
+
+  function handleSave() {
+    const n = parseInt(value)
+    if (!isNaN(n) && n >= 0) mutation.mutate(n)
+  }
+
+  return (
+    <div className="mt-4 pt-4 border-t border-border">
+      <div className="flex items-center gap-2">
+        <Target className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
+        <span className="text-xs text-muted-foreground">SEB closes after</span>
+        <Input
+          type="number"
+          min={0}
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          onKeyDown={(e) => e.key === 'Enter' && handleSave()}
+          className="w-16 h-7 text-sm text-center px-1"
+        />
+        <span className="text-xs text-muted-foreground">correct answers</span>
+        <Button
+          size="sm"
+          variant="outline"
+          className="h-7 px-2 text-xs ml-auto"
+          onClick={handleSave}
+          disabled={mutation.isPending}
+        >
+          {mutation.isPending ? '…' : 'Save'}
+        </Button>
+      </div>
+      {student.correct_required > 0 && (
+        <p className="text-xs text-primary mt-1.5 pl-5">
+          Active — student needs {student.correct_required} correct to exit SEB
+        </p>
+      )}
+    </div>
+  )
 }
 
 export default function ParentHome() {
@@ -136,6 +184,8 @@ export default function ParentHome() {
                       <p className="text-xs text-muted-foreground mt-0.5">Accuracy</p>
                     </div>
                   </div>
+
+                  <StudentTargetInput student={s} />
                 </CardContent>
               </Card>
             )

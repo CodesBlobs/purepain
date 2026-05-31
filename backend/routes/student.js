@@ -92,7 +92,12 @@ router.get('/dashboard', async (req, res) => {
       WHERE psl.student_id = $1
     `, [req.user.id]);
 
-    res.json({ assignments: assignmentsWithOptions, stats, recentAttempts, parents });
+    const targetRow = await db.get(`
+      SELECT COALESCE(MAX(correct_required), 0) as correct_required
+      FROM parent_student_links WHERE student_id = $1
+    `, [req.user.id]);
+
+    res.json({ assignments: assignmentsWithOptions, stats, recentAttempts, parents, correctRequired: targetRow?.correct_required ?? 0 });
   } catch (err) {
     res.status(500).json({ error: 'Failed to load dashboard' });
   }

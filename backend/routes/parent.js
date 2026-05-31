@@ -9,6 +9,7 @@ router.get('/dashboard', async (req, res) => {
   try {
     const students = await db.all(`
       SELECT u.id, u.name, u.email, u.grade_level,
+        psl.correct_required,
         (SELECT COUNT(*) FROM assignments a WHERE a.student_id = u.id AND a.parent_id = $1 AND a.status = 'pending')::int as pending_count,
         (SELECT COUNT(*) FROM assignments a WHERE a.student_id = u.id AND a.parent_id = $2 AND a.status = 'completed')::int as completed_count,
         (SELECT COUNT(*) FROM attempts att WHERE att.student_id = u.id AND att.is_correct = 1)::int as correct_count,
@@ -140,6 +141,27 @@ router.delete('/questions/:id', async (req, res) => {
     res.json({ message: 'Question deleted' });
   } catch (err) {
     res.status(500).json({ error: 'Failed to delete question' });
+  }
+});
+
+router.put('/student/:studentId/target', async (req, res) => {
+  const n = parseInt(req.body.correct_required);
+  if (isNaN(n) || n < 0) return res.status(400).json({ error: 'correct_required must be a non-negative integer' });
+
+  try {
+    const linked = await db.get(
+      'SELECT id FROM parent_student_links WHERE parent_id = $1 AND student_id = $2',
+      [req.user.id, req.params.studentId]
+    );
+    if (!linked) return res.status(403).json({ error: 'Student not linked to your account' });
+
+    await db.run(
+      'UPDATE parent_student_links SET correct_required = $1 WHERE parent_id = $2 AND student_id = $3',
+      [n, req.user.id, req.params.studentId]
+    );
+    res.json({ correct_required: n });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to update target' });
   }
 });
 
