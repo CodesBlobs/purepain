@@ -199,6 +199,70 @@ router.post('/submit', async (req, res) => {
   }
 });
 
+router.post('/generate-practice', async (req, res) => {
+  if (!process.env.AI_ENDPOINT) return res.status(503).json({ error: 'AI not configured' });
+
+  const { examples = [], count = 5 } = req.body;
+  const safeCount = Math.min(Math.max(parseInt(count) || 5, 1), 10);
+
+  const difficulties = [...new Set(examples.map(e => e.difficulty).filter(Boolean))].join(', ') || 'medium';
+  const exampleList = examples.slice(0, 5).map((q, i) =>
+    `${i + 1}. [${q.difficulty}, ${q.type}] ${q.question_text}`
+  ).join('\n');
+
+  const prompt = `A student needs more practice. Generate ${safeCount} math questions similar in style and difficulty to these examples:
+
+${exampleList}
+
+Match the same difficulty (${difficulties}) and question types. Use LaTeX ($...$) for all math expressions.
+Return ONLY a valid JSON array, no markdown, no explanation. Each element:
+- "type": "multiple_choice" or "word_problem"
+- "difficulty": one of "easy", "medium", "hard" — match the examples
+- "question_text": the question string (use LaTeX for all math)
+- "answer": for word_problem: a plain number only (no units); for multiple_choice: must exactly match the correct option text
+- "options": array of {label, text, is_correct} — required for multiple_choice, omit for word_problem
+
+Make sure every question is different from the examples and from each other.`;
+
+  try {
+    const aiRes = await fetch(process.env.AI_ENDPOINT, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${process.env.AI_API_KEY}`,
+      },
+      body: JSON.stringify({
+        model: process.env.AI_MODEL || 'gemma3:12b',
+        messages: [{ role: 'user', content: prompt }],
+        stream: false,
+      }),
+    });
+    if (!aiRes.ok) throw new Error(`AI API error: ${aiRes.status}`);
+    const aiData = await aiRes.json();
+    const raw = (aiData.choices?.[0]?.message?.content || '').trim();
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) throw new Error('Expected JSON array');
+
+    const questions = parsed
+      .filter(q => q.type && q.difficulty && q.question_text && q.answer)
+      .map(q => ({
+        type: q.type,
+        difficulty: q.difficulty,
+        question_text: q.question_text,
+        answer: q.answer,
+        options: (q.options || []).map(o => ({
+          option_label: o.label,
+          option_text: o.text,
+          is_correct: o.is_correct,
+        })),
+      }));
+
+    res.json({ questions });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to generate practice: ' + err.message });
+  }
+});
+
 router.get('/assignments-overview', async (req, res) => {
   try {
     const rows = await db.all(`
